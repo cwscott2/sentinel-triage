@@ -4,6 +4,34 @@
 
 Capstone build. Axis Sentinel · Carl Scott.
 
+**Live demo:** _(URL after deploy)_ · **Eval history:** [docs/EVAL-HISTORY.md](docs/EVAL-HISTORY.md)
+
+---
+
+## Results
+
+15-case eval suite. Four full runs. One improvement, two documented regressions.
+
+| Run | Headline acc. | Non-trivial acc. | Hallucinated citations |
+|---|---|---|---|
+| Baseline | 73.5% | 11.5% (3/26) | **0%** |
+| Fix 1 — dedup + complete register | 72.7% | **19.2% (5/26)** | **0%** |
+| Fix 2 — status rubric *(reverted)* | 68.2% | 11.5% | **0%** |
+| Fix 3 — citation gate in code | 71.2% | 7.7% (2/26) | **0%** |
+
+**Read non-trivial accuracy, not headline.** The label set is 80% `no_evidence`, so an
+agent that emits `no_evidence` for everything scores **80.3%** — above a naive 80%
+target — while doing nothing. Non-trivial accuracy scores only the 26 labels where the
+expected status is not `no_evidence`; a null agent scores 0% there.
+
+The agent currently sits **below the null baseline** on mapping accuracy. The root
+cause is retrieval recall, not judgment — diagnosed after two fixes aimed at the wrong
+layer, both reported. The metric that holds on every run is the hard gate: **zero
+hallucinated citations**.
+
+Fix 3 lowered the score and was kept. Reverting it recovers ~11 points by permitting
+unverified claims, which is the exact failure this tool exists to prevent.
+
 ---
 
 ## The one job
@@ -109,9 +137,9 @@ Every tool returns `Result<T, ToolError>` — never throws. Typed errors, one re
 | Checkpoint | State |
 |---|---|
 | 1 — Agent Spec | Submitted |
-| 2 — Architecture & Tooling | In progress |
-| 3 — Evals & Reliability | Not started |
-| 4 — Ship & Demo | Not started |
+| 2 — Architecture & Tooling | Submitted |
+| 3 — Evals & Reliability | Submitted |
+| 4 — Ship & Demo | In progress |
 
 ## Local development
 
@@ -126,11 +154,30 @@ The API key is read server-side in the API route only. It must never appear in a
 ## Evals
 
 ```bash
-npm run eval          # runs evals/cases/*.json, writes evals/runs/<timestamp>.md
+npm run embed:controls   # embed the NIST control set (run once)
+npm run prep:labels      # build labeling worksheets from the source documents
+npm run label            # interactive labeler
+npm run eval             # full suite -> evals/runs/<timestamp>.md + -entries.json
+npm run diagnose -- <id> # single case, label vs actual, side by side
 ```
+
+`TRACE=1` streams each agent step live. Per-case timeout defaults to 240s.
 
 See [`evals/README.md`](evals/README.md) for the case format and labeling protocol.
 
 ## Non-goals (v1)
 
 No legal advice or regulatory applicability rulings · no private or gated documents · no batch runs · no multi-framework comparison in one run · no vendor scoring or ranking · no remediation drafting · no continuous monitoring.
+
+
+---
+
+## Demo spend guards
+
+The deployed demo runs on a live API key at a public URL, so it accepts **only the
+preset vendors** in `src/lib/demo.ts`, rate-limits to 5 runs per IP per hour, and caps
+global daily runs. Clone the repo and supply your own key to triage arbitrary URLs.
+
+An unbounded public endpoint backed by a real API key is an open tab on someone else's
+account. That lesson was paid for once already on a prior project; it is not being
+repaid here.

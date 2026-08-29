@@ -12,3 +12,5 @@ evals/runs/
 *.tsbuildinfo
 next-env.d.ts
 evals/worksheets/
+raw.ts
+t.ts
