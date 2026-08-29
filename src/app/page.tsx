@@ -107,7 +107,8 @@ export default function Home() {
           </div>
           <div style={{ fontSize: 12, color: C.dim, margin: "2px 0 10px" }}>
             Nothing scripts this sequence. The model picks each tool from the previous
-            result and stops when it decides it has enough.
+            result. The loop ends when it returns an assessment instead of a tool call,
+            or when it hits the 12-step cap.
           </div>
           {liveSteps.length === 0 && (
             <div style={{ fontSize: 13, color: C.dim }}>waiting for the first decision…</div>
@@ -119,7 +120,7 @@ export default function Home() {
                   ? <code style={{ background: "white", padding: "1px 6px", borderRadius: 3,
                                    border: `1px solid ${C.line}` }}>{t.tools.join(" + ")}</code>
                   : <span style={{ color: C.ok, fontWeight: 500 }}>
-                      stopped — agent decided it had enough
+                      returned an assessment instead of a tool call — loop ends
                     </span>}
               </li>
             ))}
@@ -162,7 +163,8 @@ export default function Home() {
               </div>
               <div style={{ fontSize: 12, color: C.dim, marginBottom: 8 }}>
                 Nothing scripts this sequence. The model chooses each tool from the
-                previous result, and stops when it decides it has enough.
+                previous result. The loop ends when it returns an assessment instead of
+                a tool call, or when it hits the 12-step cap.
               </div>
               <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.7 }}>
                 {result.trace.map((t: any) => (
@@ -171,13 +173,19 @@ export default function Home() {
                       ? <code style={{ background: C.panel, padding: "1px 5px", borderRadius: 3 }}>
                           {t.tools.join(" + ")}
                         </code>
-                      : <span style={{ color: C.ok }}>stopped — agent decided it had enough</span>}
+                      : <span style={{ color: C.ok }}>returned an assessment instead of a tool call — loop ends</span>}
                     {t.note && t.tools.length > 0 && (
                       <span style={{ color: C.dim }}> — {t.note}</span>
                     )}
                   </li>
                 ))}
               </ol>
+              {result.steps >= 12 && (
+                <div style={{ fontSize: 12, color: C.warn, marginTop: 6 }}>
+                  Step cap reached — the loop was stopped by the guardrail, not by the
+                  agent concluding. Results reflect whatever was verified before the cap.
+                </div>
+              )}
             </div>
           )}
 

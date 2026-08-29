@@ -197,7 +197,7 @@ export async function runTriage(
       trace.push({
         step: stepCount,
         tools: names,
-        note: names.length === 0 ? "no tool call — agent decided it had enough" : undefined,
+        note: names.length === 0 ? "returned an assessment instead of a tool call — loop ends" : undefined,
       });
       onStep?.({ step: stepCount, tools: names, done: names.length === 0 });
       if (process.env.TRACE) {
