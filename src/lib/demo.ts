@@ -78,8 +78,14 @@ export const ALLOWED_URLS = new Set(DEMO_VENDORS.flatMap((v) => v.urls));
 
 /* ---------------- rate limiting (in-memory, per instance) ---------------- */
 
-const PER_IP_PER_HOUR = 5;
-const GLOBAL_PER_DAY = 200;
+/**
+ * Defaults are the shipped posture. Both can be raised temporarily via env vars
+ * (e.g. while recording a demo) without changing code — so the repo never carries
+ * a permissive limit that someone forgets to revert. Remove the env var to
+ * restore the default.
+ */
+const PER_IP_PER_HOUR = Number(process.env.DEMO_PER_IP_PER_HOUR ?? 5);
+const GLOBAL_PER_DAY = Number(process.env.DEMO_GLOBAL_PER_DAY ?? 200);
 
 const ipHits = new Map<string, number[]>();
 let dayStamp = new Date().toISOString().slice(0, 10);
