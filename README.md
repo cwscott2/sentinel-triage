@@ -4,7 +4,7 @@
 
 Capstone build. Axis Sentinel · Carl Scott.
 
-**Live demo:** _(URL after deploy)_ · **Eval history:** [docs/EVAL-HISTORY.md](docs/EVAL-HISTORY.md)
+**Live demo:** https://sentinel-triage-liart.vercel.app · **Eval history:** [docs/EVAL-HISTORY.md](docs/EVAL-HISTORY.md)
 
 ---
 
