@@ -41,6 +41,7 @@ export interface TriageResult {
   toolErrors: ToolError[];
   latencyMs: number;
   usage: { promptTokens: number; completionTokens: number };
+  trace: { step: number; tools: string[]; note?: string }[];
 }
 
 /**
@@ -69,6 +70,9 @@ export async function runTriage(input: TriageInput): Promise<TriageResult> {
   const started = Date.now();
   const toolErrors: ToolError[] = [];
   let stepCount = 0;
+  /** The agent's actual decision path: which tools it chose, in what order.
+   *  Nothing scripts this sequence — the model picks each step from tool results. */
+  const trace: { step: number; tools: string[]; note?: string }[] = [];
   const sessionDocs = new Map<string, string>(); // session memory: url -> parsed text
   /**
    * Sources are recorded HERE, from actual successful fetches, and never taken
@@ -182,9 +186,16 @@ export async function runTriage(input: TriageInput): Promise<TriageResult> {
     maxSteps: MAX_STEPS,
     tools,
     onStepFinish: ({ toolCalls }) => {
-      if (!process.env.TRACE) return;
-      const names = (toolCalls ?? []).map((t: any) => t.toolName).join(", ");
-      process.stderr.write(`      · step ${++stepCount}${names ? `: ${names}` : " (no tool call)"}\n`);
+      stepCount++;
+      const names = (toolCalls ?? []).map((t: any) => t.toolName);
+      trace.push({
+        step: stepCount,
+        tools: names,
+        note: names.length === 0 ? "no tool call — agent decided it had enough" : undefined,
+      });
+      if (process.env.TRACE) {
+        process.stderr.write(`      · step ${stepCount}${names.length ? `: ${names.join(", ")}` : " (done)"}\n`);
+      }
     },
     prompt: `Vendor: ${input.vendor}
 Framework: ${input.framework}
@@ -300,6 +311,7 @@ Any control without a verified quote is no_evidence. If nothing was verified, se
     steps: gather.steps?.length ?? 0,
     toolErrors,
     latencyMs: Date.now() - started,
+    trace,
     usage: {
       promptTokens: gather.usage?.promptTokens ?? 0,
       completionTokens: gather.usage?.completionTokens ?? 0,

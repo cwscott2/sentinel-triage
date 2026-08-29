@@ -98,6 +98,32 @@ export default function Home() {
             </p>
           )}
 
+          {result.trace?.length > 0 && (
+            <div style={{ marginTop: 18 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>
+                Agent decision path — {result.trace.length} step{result.trace.length === 1 ? "" : "s"}
+              </div>
+              <div style={{ fontSize: 12, color: C.dim, marginBottom: 8 }}>
+                Nothing scripts this sequence. The model chooses each tool from the
+                previous result, and stops when it decides it has enough.
+              </div>
+              <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.7 }}>
+                {result.trace.map((t: any) => (
+                  <li key={t.step}>
+                    {t.tools.length
+                      ? <code style={{ background: C.panel, padding: "1px 5px", borderRadius: 3 }}>
+                          {t.tools.join(" + ")}
+                        </code>
+                      : <span style={{ color: C.ok }}>stopped — agent decided it had enough</span>}
+                    {t.note && t.tools.length > 0 && (
+                      <span style={{ color: C.dim }}> — {t.note}</span>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
           {Object.keys(errCounts).length > 0 && (
             <div style={{ marginTop: 14, fontSize: 13 }}>
               <strong>Guardrails fired:</strong>{" "}
