@@ -247,6 +247,9 @@ export default function Home() {
            style={{ color: C.ink }}>EVAL-HISTORY.md</a>
         {" · "}
         <a href="https://github.com/cwscott2/sentinel-triage" style={{ color: C.ink }}>repo</a>
+        <div style={{ marginTop: 6, fontSize: 11, opacity: 0.7 }}>
+          build {process.env.NEXT_PUBLIC_BUILD ?? "dev"}
+        </div>
       </footer>
     </main>
   );
