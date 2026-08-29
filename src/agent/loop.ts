@@ -52,9 +52,23 @@ function unwrap<T>(r: Result<T>) {
   return r.ok ? { ok: true, ...r.value } : { ok: false, error: r.code, hint: r.recovery_hint };
 }
 
+/** Hard ceiling on any tool result. A single oversized return must degrade the
+ *  run, never kill it — context-window death is not a recoverable error. */
+const MAX_TOOL_RESULT_CHARS = 12_000;
+function bound<T extends object>(v: T): T | { ok: boolean; truncated: true; note: string } {
+  const s = JSON.stringify(v);
+  if (s.length <= MAX_TOOL_RESULT_CHARS) return v;
+  return {
+    ok: false,
+    truncated: true,
+    note: `Tool result exceeded ${MAX_TOOL_RESULT_CHARS} chars (${s.length}) and was withheld. Work from parse_document's claim list instead of raw content.`,
+  };
+}
+
 export async function runTriage(input: TriageInput): Promise<TriageResult> {
   const started = Date.now();
   const toolErrors: ToolError[] = [];
+  let stepCount = 0;
   const sessionDocs = new Map<string, string>(); // session memory: url -> parsed text
   /**
    * Sources are recorded HERE, from actual successful fetches, and never taken
@@ -64,6 +78,8 @@ export async function runTriage(input: TriageInput): Promise<TriageResult> {
    * execution, not a claim of the model.
    */
   const verifiedSources: { url: string; retrieved_at: string; doc_type: "trust_page" | "dpa" | "model_card" | "whitepaper" | "other" }[] = [];
+  /** Quotes that actually passed verify_citation during this run. */
+  const verifiedQuotes = new Set<string>();
 
   const record = <T>(r: Result<T>) => {
     if (!r.ok) toolErrors.push(r);
@@ -72,9 +88,25 @@ export async function runTriage(input: TriageInput): Promise<TriageResult> {
 
   const tools = {
     fetch_page: tool({
-      description: "Fetch a public vendor documentation page or PDF.",
+      description:
+        "Check that a vendor URL is reachable. Returns status only — call parse_document to read it.",
       parameters: z.object({ url: z.string().url() }),
-      execute: async ({ url }) => record(await fetchPage(url)),
+      execute: async ({ url }) => bound(await (async () => {
+        const r = await fetchPage(url);
+        if (!r.ok) return record(r);
+        // NEVER return r.value — FetchedPage.body is the raw document. Spreading
+        // it here put 652k characters of HTML into context and blew the 128k
+        // window on the first eval run. parse_document re-fetches internally,
+        // so the body has no reason to reach the model at all.
+        return {
+          ok: true,
+          url,
+          contentType: r.value.contentType,
+          bytes: typeof r.value.body === "string" ? r.value.body.length : r.value.body.byteLength,
+          retrieved_at: r.value.retrieved_at,
+          next: "Call parse_document on this URL to extract governance claims.",
+        };
+      })()),
     }),
 
     parse_document: tool({
@@ -136,7 +168,9 @@ export async function runTriage(input: TriageInput): Promise<TriageResult> {
             hint: `No parsed text for ${url}. Call parse_document on it first.`,
           };
         }
-        return record(verifyCitation(quote, source));
+        const v = verifyCitation(quote, source);
+        if (v.ok) verifiedQuotes.add(quote.toLowerCase().replace(/\s+/g, " ").trim());
+        return record(v);
       },
     }),
   };
@@ -147,6 +181,11 @@ export async function runTriage(input: TriageInput): Promise<TriageResult> {
     system: SYSTEM_PROMPT,
     maxSteps: MAX_STEPS,
     tools,
+    onStepFinish: ({ toolCalls }) => {
+      if (!process.env.TRACE) return;
+      const names = (toolCalls ?? []).map((t: any) => t.toolName).join(", ");
+      process.stderr.write(`      · step ${++stepCount}${names ? `: ${names}` : " (no tool call)"}\n`);
+    },
     prompt: `Vendor: ${input.vendor}
 Framework: ${input.framework}
 Sources to review:
@@ -187,7 +226,61 @@ Any control without a verified quote is no_evidence. If nothing was verified, se
     if (dropped > 0) {
       console.warn(`[triage] dropped ${dropped} control(s) with IDs absent from the framework`);
     }
-    entry.controls = kept;
+
+    // Deduplicate. The model emits the same control_id several times — observed
+    // 4x MAP 2.2 and 3x MEASURE 2.10 in a single run. A risk register with the
+    // same control four times is not a deliverable, and scoring it depends on
+    // which duplicate happens to be first.
+    //
+    // When duplicates disagree, keep the MOST CONSERVATIVE status. Two answers
+    // for one control means the agent is not confident; in a compliance
+    // artifact the weaker claim is the safe reading.
+    const RANK = { no_evidence: 0, not_met: 1, partial: 2, met: 3 } as const;
+    const byId = new Map<string, (typeof kept)[number]>();
+    for (const c of kept) {
+      const prev = byId.get(c.control_id);
+      if (!prev || RANK[c.status] < RANK[prev.status]) byId.set(c.control_id, c);
+    }
+    if (kept.length !== byId.size) {
+      console.warn(`[triage] collapsed ${kept.length} rows to ${byId.size} unique controls`);
+    }
+
+    // A register is complete or it is not a register. Every framework control
+    // gets a row; absent means no_evidence, stated explicitly rather than implied.
+    // THE GOVERNING RULE, ENFORCED.
+    //
+    // The spec has always said: "no verifiable quote, and the status downgrades
+    // to no_evidence." That rule lived in the system prompt and was never
+    // checked. Measured result: 32 `met` emissions across the suite, every one
+    // of them wrong, many with no verified citation behind them.
+    //
+    // A product whose central promise is provenance cannot leave that promise
+    // to the model's compliance with an instruction.
+    const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+    let downgraded = 0;
+    for (const c of byId.values()) {
+      if (c.status !== "met" && c.status !== "partial") continue;
+      const verified = c.citation && verifiedQuotes.has(norm(c.citation.quote));
+      if (!verified) {
+        c.status = "no_evidence";
+        c.citation = null;
+        c.rationale = `Downgraded: no verified quote supports this assessment. (${c.rationale})`.slice(0, 500);
+        downgraded++;
+      }
+    }
+    if (downgraded > 0) {
+      console.warn(`[triage] downgraded ${downgraded} unverified claim(s) to no_evidence`);
+    }
+
+    entry.controls = [...VALID_CONTROL_IDS].map(
+      (id) =>
+        byId.get(id) ?? {
+          control_id: id,
+          status: "no_evidence" as const,
+          citation: null,
+          rationale: "Not addressed in the fetched sources.",
+        }
+    );
     entry.gaps = entry.gaps.filter((g) => VALID_CONTROL_IDS.has(g.control_id));
 
     if (verifiedSources.length === 0 || VALID_CONTROL_IDS.size === 0) {

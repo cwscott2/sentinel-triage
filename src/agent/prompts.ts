@@ -19,3 +19,40 @@ Work in this order: fetch the sources, parse them, retrieve candidate controls f
 export const EXTRACTION_PROMPT = `Extract every statement in this document that bears on AI governance: model usage, training data, human oversight, evaluation, incident response, third-party models, data retention, and customer controls.
 
 Return each as a verbatim sentence from the source. Do not paraphrase — downstream citation verification compares against the source text exactly.`;
+
+
+/**
+ * Status rubric.
+ *
+ * Baseline runs emitted `met` for every control it assessed — zero `partial`,
+ * zero `not_met` — because nothing in the prompt distinguished them. The model
+ * treated the judgment as binary and rounded up.
+ *
+ * The distinction below is not arbitrary calibration to match a labeler. NIST
+ * AI RMF subcategories are written in terms of things being "documented",
+ * "established", "in place" — a process, not a posture. A vendor asserting a
+ * value ("we are committed to fairness") has not evidenced a documented
+ * process, and a compliance artifact must not record that it has.
+ */
+export const STATUS_RUBRIC = `STATUS DEFINITIONS — apply these strictly.
+
+met       The vendor describes a DOCUMENTED PROCESS, MECHANISM, OR ARTIFACT that
+          satisfies the control: a named policy, a published report, a review
+          board, a stated procedure, a certification in scope, a configurable
+          customer control. Not an intention, value, or commitment.
+          Example: "All AI features undergo review by our Responsible AI board
+          before launch, documented in our AI review log."
+
+partial   The vendor ADDRESSES THE SUBJECT of the control but does not evidence a
+          documented process — a commitment, a principle, an aspiration, or a
+          mechanism described too vaguely to verify.
+          Example: "We are committed to fairness and monitor our models."
+          THIS IS THE MOST COMMON CORRECT ANSWER when the vendor says something
+          relevant. Public trust pages are usually written as posture, not
+          process. When torn between met and partial, choose partial.
+
+not_met   The vendor states something that CONTRADICTS the control. Requires an
+          affirmative statement, never silence.
+          Example: "Customer data is used to train our models with no opt-out."
+
+no_evidence  Silence, or only tangential material. The default.`;

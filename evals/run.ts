@@ -5,6 +5,7 @@ import { verifyCitation } from "../src/tools/verifyCitation";
 
 const CASES = join(process.cwd(), "evals/cases");
 const RUNS = join(process.cwd(), "evals/runs");
+const CASE_TIMEOUT_MS = Number(process.env.CASE_TIMEOUT_MS ?? 240_000);
 
 interface Case {
   id: string; kind: "happy" | "adversarial"; vendor: string;
@@ -14,17 +15,51 @@ interface Case {
 
 (async () => {
   mkdirSync(RUNS, { recursive: true });
+  console.log(`\nRunning eval suite — per-case timeout ${CASE_TIMEOUT_MS / 1000}s.`);
+  console.log(`Set TRACE=1 to see each agent step live.\n`);
   const files = readdirSync(CASES).filter((f) => f.endsWith(".json") && !f.startsWith("v01-example"));
   const rows: string[] = [];
   let statusHits = 0, statusTotal = 0, citations = 0, badCitations = 0;
   // Non-trivial = the labels a null agent cannot get for free.
   let ntHits = 0, ntTotal = 0, nullHits = 0;
+  const errorRows: string[] = [];
+  const entries: Record<string, unknown> = {};
+  let caseNo = 0;
   let abstainHits = 0, abstainTotal = 0, latencySum = 0;
 
   for (const f of files) {
     const c: Case = JSON.parse(readFileSync(join(CASES, f), "utf-8"));
-    const r = await runTriage({ vendor: c.vendor, urls: c.urls, framework: c.framework });
+
+    // A single failing case must not kill the suite. An eval harness that dies
+    // on case 1 cannot report a pass rate, which is the one thing it exists for.
+    caseNo++;
+    const t0 = Date.now();
+    process.stdout.write(`[${caseNo}/${files.length}] ${c.id} ... `);
+
+    let r: Awaited<ReturnType<typeof runTriage>>;
+    try {
+      // A stuck case must not hang the suite indefinitely.
+      r = await Promise.race([
+        runTriage({ vendor: c.vendor, urls: c.urls, framework: c.framework }),
+        new Promise<never>((_, rej) =>
+          setTimeout(() => rej(new Error(`case timeout after ${CASE_TIMEOUT_MS / 1000}s`)), CASE_TIMEOUT_MS)
+        ),
+      ]);
+      console.log(`done in ${((Date.now() - t0) / 1000).toFixed(1)}s  (${r.steps} steps, ${r.entry.controls.length} controls, ${r.toolErrors.length} tool errors)`);
+    } catch (e) {
+      const msg = String(e).split("\n")[0].slice(0, 160);
+      console.log(`FAILED after ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+      console.error(`      ${msg}`);
+      errorRows.push(`| ${c.id} | ${c.kind} | ${msg} |`);
+      statusTotal += c.expect.controls.length;
+      for (const ex of c.expect.controls) {
+        if (ex.status === "no_evidence") nullHits++; else ntTotal++;
+      }
+      if (c.kind === "adversarial") abstainTotal++;
+      continue;
+    }
     latencySum += r.latencyMs;
+    entries[c.id] = r.entry;
 
     // Metric 1 — mapping accuracy
     let caseHits = 0;
@@ -99,6 +134,12 @@ expected status is something other than "no_evidence". A null agent scores 0% th
 |---|---|---|---|---|---|---|---|
 ${rows.join("\n")}
 
+## Harness errors
+
+${errorRows.length
+  ? `These cases threw before producing a result. They are scored as total misses.\n\n| Case | Kind | Error |\n|---|---|---|\n${errorRows.join("\n")}`
+  : "None — every case produced a result."}
+
 ## Worst case
 
 ${rows.length ? "Lowest non-trivial accuracy above. Diagnose the mechanism before changing anything, then re-run the FULL suite and report both the fixed case and the aggregate — including regressions." : "No cases."}
@@ -106,6 +147,7 @@ ${rows.length ? "Lowest non-trivial accuracy above. Diagnose the mechanism befor
 
   const out = join(RUNS, `${new Date().toISOString().replace(/[:.]/g, "-")}.md`);
   writeFileSync(out, report);
+  writeFileSync(out.replace(/\.md$/, "-entries.json"), JSON.stringify(entries, null, 2));
   console.log(report);
   console.log(`\nWritten to ${out}`);
 })();

@@ -10,7 +10,8 @@
     "eval": "tsx --env-file=.env.local evals/run.ts",
     "embed:controls": "tsx --env-file=.env.local scripts/embed-controls.ts",
     "prep:labels": "tsx --env-file=.env.local evals/prep-labels.ts",
-    "label": "tsx --env-file=.env.local evals/label.ts"
+    "label": "tsx --env-file=.env.local evals/label.ts",
+    "diagnose": "tsx --env-file=.env.local evals/diagnose.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.0.0",
