@@ -7,3 +7,7 @@ node_modules/
 .DS_Store
 evals/runs/
 .vercel
+
+# build artifacts
+*.tsbuildinfo
+next-env.d.ts

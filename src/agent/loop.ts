@@ -7,13 +7,24 @@ import {
   ToolError,
   type Result,
 } from "@/lib/schema";
-import { SYSTEM_PROMPT } from "./prompts";
+import { SYSTEM_PROMPT, EXTRACTION_PROMPT } from "./prompts";
+import controlSet from "@/lib/controls.json";
 import { fetchPage } from "@/tools/fetchPage";
 import { parseDocument } from "@/tools/parseDocument";
 import { retrieveControls } from "@/tools/retrieveControls";
 import { verifyCitation } from "@/tools/verifyCitation";
 
 const MAX_STEPS = Number(process.env.MAX_STEPS ?? 12);
+
+/**
+ * A control_id the framework does not contain is the same failure class as an
+ * invented citation: a plausible identifier with nothing behind it. The schema
+ * types control_id as a string, so this Set — built from the actual control
+ * file — is what makes it real.
+ */
+const VALID_CONTROL_IDS = new Set(
+  (controlSet as { control_id: string }[]).map((c) => c.control_id)
+);
 
 const JUDGMENT_MODEL = openai("gpt-4o");
 const EXTRACTION_MODEL = openai("gpt-4o-mini");
@@ -67,21 +78,40 @@ export async function runTriage(input: TriageInput): Promise<TriageResult> {
     }),
 
     parse_document: tool({
-      description: "Extract clean text from a fetched page. Call fetch_page first.",
+      description:
+        "Extract AI-governance claims from a fetched page. Returns a bounded claim list, not the raw document.",
       parameters: z.object({ url: z.string().url() }),
       execute: async ({ url }) => {
         const fetched = await fetchPage(url);
         if (!fetched.ok) return record(fetched);
         const parsed = await parseDocument(fetched.value);
-        if (parsed.ok) {
-          sessionDocs.set(url, parsed.value.text);
-          verifiedSources.push({
-            url,
-            retrieved_at: fetched.value.retrieved_at,
-            doc_type: inferDocType(url),
-          });
-        }
-        return record(parsed);
+        if (!parsed.ok) return record(parsed);
+
+        // Full text stays server-side for verify_citation. It never enters the
+        // judgment model's context: returning it here put 182k tokens through
+        // gpt-4o on the first live run — ~3x the cost target — because tool
+        // results persist across every subsequent step.
+        sessionDocs.set(url, parsed.value.text);
+        verifiedSources.push({
+          url,
+          retrieved_at: fetched.value.retrieved_at,
+          doc_type: inferDocType(url),
+        });
+
+        // This is the extraction step the model-routing table promised:
+        // high token volume, low judgment, cheap model.
+        const extracted = await generateText({
+          model: EXTRACTION_MODEL,
+          prompt: `${EXTRACTION_PROMPT}\n\n---\n${parsed.value.text.slice(0, 60_000)}`,
+        });
+
+        return {
+          ok: true,
+          url,
+          chars: parsed.value.text.length,
+          headings: parsed.value.anchors.slice(0, 25).map((a) => a.heading),
+          claims: extracted.text.slice(0, 8_000),
+        };
       },
     }),
 
@@ -142,14 +172,28 @@ ${verifiedSources.length
   : "  (none — no source was successfully fetched and parsed)"}
 Vendor: ${input.vendor} · Framework: ${input.framework}
 
+LEGAL control_id VALUES (any other value is discarded):
+${VALID_CONTROL_IDS.size ? [...VALID_CONTROL_IDS].map((id) => `  ${id}`).join("\n") : "  (none — the control set is empty, so controls must be an empty array)"}
+
 Any control without a verified quote is no_evidence. If nothing was verified, set insufficient_evidence to true.`,
     });
     // Provenance is not negotiable: the executed source list wins over the
     // model's account of it, always.
     entry = { ...emitted.object, sources: verifiedSources };
-    if (verifiedSources.length === 0) {
+
+    // Provenance and identity are both facts of the system, not model claims.
+    const kept = entry.controls.filter((c) => VALID_CONTROL_IDS.has(c.control_id));
+    const dropped = entry.controls.length - kept.length;
+    if (dropped > 0) {
+      console.warn(`[triage] dropped ${dropped} control(s) with IDs absent from the framework`);
+    }
+    entry.controls = kept;
+    entry.gaps = entry.gaps.filter((g) => VALID_CONTROL_IDS.has(g.control_id));
+
+    if (verifiedSources.length === 0 || VALID_CONTROL_IDS.size === 0) {
       entry.insufficient_evidence = true;
       entry.controls = [];
+      entry.gaps = [];
       entry.confidence = "low";
     }
   } catch {

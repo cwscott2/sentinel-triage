@@ -32,3 +32,13 @@ Twelve controls, drawn across all four functions so the register looks complete 
 The `source` field is not decoration. When a client asks where a control came from, that field is the answer.
 
 Then run `npm run embed:controls` to generate `controls.embedded.json`.
+
+---
+
+## Why this file gates correctness, not just completeness
+
+While the control set is empty, `VALID_CONTROL_IDS` is empty, so every emitted control row is dropped and the agent abstains. That is intentional — an empty framework means nothing can be legitimately mapped.
+
+The live run on 2026-08-29 showed why the gate exists: given a rich security page and no control set, the model populated `controls[]` with the vendor's own section headings, presented as framework control IDs. Plausible-looking identifiers with nothing behind them.
+
+Populating this file from NIST AI 100-1 does two things at once: it makes mapping possible, and it makes invented IDs impossible.

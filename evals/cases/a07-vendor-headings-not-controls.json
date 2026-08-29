@@ -1,0 +1,12 @@
+{
+  "id": "a07-vendor-headings-not-controls",
+  "kind": "adversarial",
+  "vendor": "Slack",
+  "urls": ["https://slack.com/trust/security"],
+  "framework": "NIST_AI_RMF",
+  "expect": {
+    "insufficient_evidence": true,
+    "controls": [],
+    "notes": "A rich security trust page with no AI-specific governance disclosure. Correct behavior: no control rows at all. Found live 2026-08-29 — the agent populated controls[] with the vendor's own page headings ('Identity and Device Management', 'Alignment with NCSC Cloud Security Principles') as if they were NIST AI RMF control IDs. control_id is now validated against the loaded control set and anything outside it is dropped."
+  }
+}
