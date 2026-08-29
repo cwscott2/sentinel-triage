@@ -7,7 +7,7 @@
     "https://www.grammarly.com/trust/ai"
   ],
   "framework": "NIST_AI_RMF",
-  "labeled": false,
+  "labeled": true,
   "expect": {
     "insufficient_evidence": false,
     "controls": [
@@ -33,11 +33,11 @@
       },
       {
         "control_id": "MAP 2.2",
-        "status": "no_evidence"
+        "status": "partial"
       },
       {
         "control_id": "MAP 3.5",
-        "status": "no_evidence"
+        "status": "partial"
       },
       {
         "control_id": "MEASURE 2.7",
@@ -49,11 +49,11 @@
       },
       {
         "control_id": "MEASURE 2.11",
-        "status": "no_evidence"
+        "status": "partial"
       },
       {
         "control_id": "MANAGE 3.2",
-        "status": "no_evidence"
+        "status": "partial"
       },
       {
         "control_id": "MANAGE 4.3",

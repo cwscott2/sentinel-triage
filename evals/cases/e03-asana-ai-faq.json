@@ -6,9 +6,9 @@
     "https://help.asana.com/s/article/asana-ai-faq?language=en_US"
   ],
   "framework": "NIST_AI_RMF",
-  "labeled": false,
+  "labeled": true,
   "expect": {
-    "insufficient_evidence": false,
+    "insufficient_evidence": true,
     "controls": [
       {
         "control_id": "GOVERN 1.1",
@@ -59,6 +59,6 @@
         "status": "no_evidence"
       }
     ],
-    "notes": "717k chars, near-zero AI mentions after strip \u2014 help-center nav dump. Parse succeeds, content is noise."
+    "notes": "717k chars, near-zero AI mentions after strip — help-center nav dump. Parse succeeds, content is noise."
   }
 }

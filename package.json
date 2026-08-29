@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "eval": "tsx --env-file=.env.local evals/run.ts",
     "embed:controls": "tsx --env-file=.env.local scripts/embed-controls.ts",
-    "prep:labels": "tsx --env-file=.env.local evals/prep-labels.ts"
+    "prep:labels": "tsx --env-file=.env.local evals/prep-labels.ts",
+    "label": "tsx --env-file=.env.local evals/label.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.0.0",

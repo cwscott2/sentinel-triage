@@ -6,9 +6,9 @@
     "https://vercel.com/security"
   ],
   "framework": "NIST_AI_RMF",
-  "labeled": false,
+  "labeled": true,
   "expect": {
-    "insufficient_evidence": false,
+    "insufficient_evidence": true,
     "controls": [
       {
         "control_id": "GOVERN 1.1",

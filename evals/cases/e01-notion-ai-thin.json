@@ -6,7 +6,7 @@
     "https://www.notion.com/help/notion-ai-security-practices"
   ],
   "framework": "NIST_AI_RMF",
-  "labeled": false,
+  "labeled": true,
   "expect": {
     "insufficient_evidence": false,
     "controls": [
@@ -24,7 +24,7 @@
       },
       {
         "control_id": "GOVERN 6.1",
-        "status": "no_evidence"
+        "status": "partial"
       },
       {
         "control_id": "MAP 2.1",
@@ -40,11 +40,11 @@
       },
       {
         "control_id": "MEASURE 2.7",
-        "status": "no_evidence"
+        "status": "partial"
       },
       {
         "control_id": "MEASURE 2.10",
-        "status": "no_evidence"
+        "status": "partial"
       },
       {
         "control_id": "MEASURE 2.11",
@@ -59,6 +59,6 @@
         "status": "no_evidence"
       }
     ],
-    "notes": "Returns 200 with ~1.6k chars \u2014 help-center shell. Thin doc, not absent vendor."
+    "notes": "Returns 200 with ~1.6k chars — help-center shell. Thin doc, not absent vendor."
   }
 }

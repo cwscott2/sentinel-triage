@@ -6,9 +6,9 @@
     "https://www.zoom.com/en/products/ai-assistant/resources/privacy-security/"
   ],
   "framework": "NIST_AI_RMF",
-  "labeled": false,
+  "labeled": true,
   "expect": {
-    "insufficient_evidence": false,
+    "insufficient_evidence": true,
     "controls": [
       {
         "control_id": "GOVERN 1.1",

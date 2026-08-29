@@ -6,7 +6,7 @@
     "https://www.figma.com/legal/ai-terms/"
   ],
   "framework": "NIST_AI_RMF",
-  "labeled": false,
+  "labeled": true,
   "expect": {
     "insufficient_evidence": false,
     "controls": [
@@ -32,11 +32,11 @@
       },
       {
         "control_id": "MAP 2.2",
-        "status": "no_evidence"
+        "status": "partial"
       },
       {
         "control_id": "MAP 3.5",
-        "status": "no_evidence"
+        "status": "partial"
       },
       {
         "control_id": "MEASURE 2.7",
@@ -44,7 +44,7 @@
       },
       {
         "control_id": "MEASURE 2.10",
-        "status": "no_evidence"
+        "status": "partial"
       },
       {
         "control_id": "MEASURE 2.11",
