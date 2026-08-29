@@ -35,6 +35,9 @@ export interface TriageInput {
   framework: Framework;
 }
 
+/** Emitted as each agent step completes, so a caller can stream the decision path live. */
+export type StepEvent = { step: number; tools: string[]; done: boolean };
+
 export interface TriageResult {
   entry: RegisterEntry;
   steps: number;
@@ -66,7 +69,10 @@ function bound<T extends object>(v: T): T | { ok: boolean; truncated: true; note
   };
 }
 
-export async function runTriage(input: TriageInput): Promise<TriageResult> {
+export async function runTriage(
+  input: TriageInput,
+  onStep?: (e: StepEvent) => void
+): Promise<TriageResult> {
   const started = Date.now();
   const toolErrors: ToolError[] = [];
   let stepCount = 0;
@@ -193,6 +199,7 @@ export async function runTriage(input: TriageInput): Promise<TriageResult> {
         tools: names,
         note: names.length === 0 ? "no tool call — agent decided it had enough" : undefined,
       });
+      onStep?.({ step: stepCount, tools: names, done: names.length === 0 });
       if (process.env.TRACE) {
         process.stderr.write(`      · step ${stepCount}${names.length ? `: ${names.join(", ")}` : " (done)"}\n`);
       }

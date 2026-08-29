@@ -16,16 +16,45 @@ export default function Home() {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [raw, setRaw] = useState(false);
+  const [liveSteps, setLiveSteps] = useState<{ step: number; tools: string[]; done: boolean }[]>([]);
 
   async function run() {
-    setLoading(true); setResult(null);
+    setLoading(true); setResult(null); setLiveSteps([]);
     try {
       const res = await fetch("/api/triage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ vendor: sel.vendor, urls: sel.urls, framework: "NIST_AI_RMF" }),
       });
-      setResult(await res.json());
+
+      // Non-streaming responses are the guard rejections (429 / 403 / 400).
+      if (!res.headers.get("content-type")?.includes("ndjson")) {
+        setResult(await res.json());
+        return;
+      }
+
+      // NDJSON: one step event per agent decision, then the final result.
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const evt = JSON.parse(line);
+          if (evt.type === "step") {
+            setLiveSteps((prev) => [...prev, { step: evt.step, tools: evt.tools, done: evt.done }]);
+          } else if (evt.type === "result") {
+            setResult(evt);
+          } else if (evt.type === "error") {
+            setResult({ error: evt.detail ?? evt.error });
+          }
+        }
+      }
     } catch (e) {
       setResult({ error: String(e) });
     } finally { setLoading(false); }
@@ -69,6 +98,34 @@ export default function Home() {
       <span style={{ fontSize: 12, color: C.dim, marginLeft: 12 }}>
         Preset vendors only — the demo runs on a live API key. 5 runs/hour.
       </span>
+
+      {(loading || liveSteps.length > 0) && !result?.entry && (
+        <section style={{ marginTop: "1.6rem", padding: "1rem 1.1rem", background: C.panel,
+                          borderRadius: 6, border: `1px solid ${C.line}` }}>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>
+            Agent decision path {loading && <span style={{ fontWeight: 400, color: C.dim }}>— running</span>}
+          </div>
+          <div style={{ fontSize: 12, color: C.dim, margin: "2px 0 10px" }}>
+            Nothing scripts this sequence. The model picks each tool from the previous
+            result and stops when it decides it has enough.
+          </div>
+          {liveSteps.length === 0 && (
+            <div style={{ fontSize: 13, color: C.dim }}>waiting for the first decision…</div>
+          )}
+          <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.8 }}>
+            {liveSteps.map((t) => (
+              <li key={t.step}>
+                {t.tools.length
+                  ? <code style={{ background: "white", padding: "1px 6px", borderRadius: 3,
+                                   border: `1px solid ${C.line}` }}>{t.tools.join(" + ")}</code>
+                  : <span style={{ color: C.ok, fontWeight: 500 }}>
+                      stopped — agent decided it had enough
+                    </span>}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       {result?.error && (
         <div style={{ marginTop: "1.5rem", padding: "0.9rem", background: "#fef2f2",
