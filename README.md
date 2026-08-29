@@ -181,3 +181,5 @@ global daily runs. Clone the repo and supply your own key to triage arbitrary UR
 An unbounded public endpoint backed by a real API key is an open tab on someone else's
 account. That lesson was paid for once already on a prior project; it is not being
 repaid here.
+
+Limits, overrides, and the deploy runbook: [docs/OPERATIONS.md](docs/OPERATIONS.md).
