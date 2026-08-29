@@ -1,0 +1,64 @@
+{
+  "id": "v03-figma-ai-terms",
+  "kind": "happy",
+  "vendor": "Figma",
+  "urls": [
+    "https://www.figma.com/legal/ai-terms/"
+  ],
+  "framework": "NIST_AI_RMF",
+  "labeled": false,
+  "expect": {
+    "insufficient_evidence": false,
+    "controls": [
+      {
+        "control_id": "GOVERN 1.1",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "GOVERN 1.6",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "GOVERN 4.3",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "GOVERN 6.1",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "MAP 2.1",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "MAP 2.2",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "MAP 3.5",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "MEASURE 2.7",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "MEASURE 2.10",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "MEASURE 2.11",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "MANAGE 3.2",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "MANAGE 4.3",
+        "status": "no_evidence"
+      }
+    ],
+    "notes": "Legal AI terms. Strong on data use and training opt-out."
+  }
+}

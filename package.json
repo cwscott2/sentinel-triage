@@ -7,8 +7,9 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "eval": "tsx evals/run.ts",
-    "embed:controls": "tsx scripts/embed-controls.ts"
+    "eval": "tsx --env-file=.env.local evals/run.ts",
+    "embed:controls": "tsx --env-file=.env.local scripts/embed-controls.ts",
+    "prep:labels": "tsx --env-file=.env.local evals/prep-labels.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.0.0",

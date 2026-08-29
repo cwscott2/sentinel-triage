@@ -1,1 +1,98 @@
-[]
+[
+  {
+    "control_id": "GOVERN 1.1",
+    "function": "GOVERN",
+    "title": "Legal and regulatory requirements",
+    "text": "Legal and regulatory requirements involving AI are understood, managed, and documented.",
+    "vendor_question": "Which AI-specific legal and regulatory regimes have you assessed your product against, and where is that assessment documented?",
+    "source": "NIST AI RMF 1.0 (NIST AI 100-1), Core — GOVERN 1.1"
+  },
+  {
+    "control_id": "GOVERN 1.6",
+    "function": "GOVERN",
+    "title": "AI system inventory",
+    "text": "Mechanisms are in place to inventory AI systems and are resourced according to organizational risk priorities.",
+    "vendor_question": "Do you maintain an inventory of the AI systems and models embedded in your product, and can you share its scope?",
+    "source": "NIST AI RMF 1.0 (NIST AI 100-1), Core — GOVERN 1.6"
+  },
+  {
+    "control_id": "GOVERN 4.3",
+    "function": "GOVERN",
+    "title": "Testing, incident identification, information sharing",
+    "text": "Organizational practices are in place to enable AI testing, identification of incidents, and information sharing.",
+    "vendor_question": "What is your process for identifying and disclosing AI-related incidents to customers, and what is the notification window?",
+    "source": "NIST AI RMF 1.0 (NIST AI 100-1), Core — GOVERN 4.3"
+  },
+  {
+    "control_id": "GOVERN 6.1",
+    "function": "GOVERN",
+    "title": "Third-party AI risk policies",
+    "text": "Policies and procedures are in place that address AI risks associated with third-party entities, including risks of infringement of a third-party's intellectual property or other rights.",
+    "vendor_question": "Which third-party model providers do you rely on, and what governance do you apply to them?",
+    "source": "NIST AI RMF 1.0 (NIST AI 100-1), Core — GOVERN 6.1"
+  },
+  {
+    "control_id": "MAP 2.1",
+    "function": "MAP",
+    "title": "Tasks and methods defined",
+    "text": "The specific tasks and methods used to implement the tasks that the AI system will support are defined (e.g., classifiers, generative models, recommenders).",
+    "vendor_question": "Which specific AI capabilities are in the product, and what model type implements each?",
+    "source": "NIST AI RMF 1.0 (NIST AI 100-1), Core — MAP 2.1"
+  },
+  {
+    "control_id": "MAP 2.2",
+    "function": "MAP",
+    "title": "Knowledge limits and human oversight of output",
+    "text": "Information about the AI system's knowledge limits and how system output may be utilized and overseen by humans is documented.",
+    "vendor_question": "Where do you document the model's known limitations and the intended human review of its output?",
+    "source": "NIST AI RMF 1.0 (NIST AI 100-1), Core — MAP 2.2"
+  },
+  {
+    "control_id": "MAP 3.5",
+    "function": "MAP",
+    "title": "Human oversight processes",
+    "text": "Processes for human oversight are defined, assessed, and documented in accordance with organizational policies from the govern function.",
+    "vendor_question": "What human oversight is built into AI-driven decisions, and can a customer configure or escalate it?",
+    "source": "NIST AI RMF 1.0 (NIST AI 100-1), Core — MAP 3.5"
+  },
+  {
+    "control_id": "MEASURE 2.7",
+    "function": "MEASURE",
+    "title": "Security and resilience evaluated",
+    "text": "AI system security and resilience – as identified in the map function – are evaluated and documented.",
+    "vendor_question": "Have you tested the AI features specifically for prompt injection, model extraction, and adversarial input, and is that testing documented?",
+    "source": "NIST AI RMF 1.0 (NIST AI 100-1), Core — MEASURE 2.7"
+  },
+  {
+    "control_id": "MEASURE 2.10",
+    "function": "MEASURE",
+    "title": "Privacy risk examined",
+    "text": "Privacy risk of the AI system – as identified in the map function – is examined and documented.",
+    "vendor_question": "Is customer data used to train or fine-tune models, what is the retention period, and how does a customer opt out?",
+    "source": "NIST AI RMF 1.0 (NIST AI 100-1), Core — MEASURE 2.10"
+  },
+  {
+    "control_id": "MEASURE 2.11",
+    "function": "MEASURE",
+    "title": "Fairness and bias evaluated",
+    "text": "Fairness and bias – as identified in the map function – are evaluated and results are documented.",
+    "vendor_question": "Have you evaluated the AI features for bias across affected populations, and can you share the results?",
+    "source": "NIST AI RMF 1.0 (NIST AI 100-1), Core — MEASURE 2.11"
+  },
+  {
+    "control_id": "MANAGE 3.2",
+    "function": "MANAGE",
+    "title": "Pre-trained model monitoring",
+    "text": "Pre-trained models which are used for development are monitored as part of AI system regular monitoring and maintenance.",
+    "vendor_question": "How do you monitor the third-party pre-trained models you depend on, and how are customers notified when one changes?",
+    "source": "NIST AI RMF 1.0 (NIST AI 100-1), Core — MANAGE 3.2"
+  },
+  {
+    "control_id": "MANAGE 4.3",
+    "function": "MANAGE",
+    "title": "Incident communication and recovery",
+    "text": "Incidents and errors are communicated to relevant AI actors, including affected communities. Processes for tracking, responding to, and recovering from incidents and errors are followed and documented.",
+    "vendor_question": "What is your documented process for tracking, responding to, and recovering from AI-related incidents?",
+    "source": "NIST AI RMF 1.0 (NIST AI 100-1), Core — MANAGE 4.3"
+  }
+]

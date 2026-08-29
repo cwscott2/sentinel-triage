@@ -32,6 +32,13 @@ export async function parseDocument(page: FetchedPage): Promise<Result<ParsedDoc
     const $ = cheerio.load(page.body);
     $("script, style, nav, footer, header, noscript, svg").remove();
 
+    // Block elements must be separated before extraction. cheerio's .text()
+    // concatenates without whitespace, producing "...for all users.In addition"
+    // — which breaks sentence splitting AND causes verify_citation to reject
+    // otherwise-valid quotes that span a block boundary. Found via the labeling
+    // worksheets on 2026-08-29.
+    $("p, div, li, br, tr, section, article, h1, h2, h3, h4, h5, h6").after(" ");
+
     $("h1, h2, h3").each((_, el) => {
       const heading = $(el).text().trim();
       if (heading) anchors.push({ heading, offset: text.length });

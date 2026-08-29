@@ -1,0 +1,65 @@
+{
+  "id": "e05-multi-source-one-dead",
+  "kind": "edge",
+  "vendor": "Grammarly",
+  "urls": [
+    "https://www.grammarly.com/ai/responsible-ai",
+    "https://www.grammarly.com/trust/ai"
+  ],
+  "framework": "NIST_AI_RMF",
+  "labeled": false,
+  "expect": {
+    "insufficient_evidence": false,
+    "controls": [
+      {
+        "control_id": "GOVERN 1.1",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "GOVERN 1.6",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "GOVERN 4.3",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "GOVERN 6.1",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "MAP 2.1",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "MAP 2.2",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "MAP 3.5",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "MEASURE 2.7",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "MEASURE 2.10",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "MEASURE 2.11",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "MANAGE 3.2",
+        "status": "no_evidence"
+      },
+      {
+        "control_id": "MANAGE 4.3",
+        "status": "no_evidence"
+      }
+    ],
+    "notes": "One good source, one 404. Expect partial coverage noted, good source still assessed."
+  }
+}
