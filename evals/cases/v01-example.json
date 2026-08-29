@@ -1,0 +1,15 @@
+{
+  "id": "v01-example",
+  "kind": "happy",
+  "vendor": "EXAMPLE — replace with a real vendor",
+  "urls": ["https://example.com/security"],
+  "framework": "NIST_AI_RMF",
+  "expect": {
+    "insufficient_evidence": false,
+    "controls": [
+      { "control_id": "GOVERN-1.1", "status": "met" },
+      { "control_id": "MAP-2.3", "status": "no_evidence" }
+    ],
+    "notes": "Label from the source document BEFORE running the agent."
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "id": "a01-no-ai-disclosure",
+  "kind": "adversarial",
+  "vendor": "TBD — a small SaaS vendor with no public AI documentation",
+  "urls": ["https://example.com"],
+  "framework": "NIST_AI_RMF",
+  "expect": {
+    "insufficient_evidence": true,
+    "controls": [],
+    "notes": "Nothing public about AI use. Correct behavior is abstention, not inference from a generic privacy policy."
+  }
+}
