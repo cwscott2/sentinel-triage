@@ -2,8 +2,8 @@
 import { useState } from "react";
 
 const DEMO = {
-  vendor: "Anthropic",
-  urls: "https://www.anthropic.com/trust-center",
+  vendor: "Slack",
+  urls: "https://slack.com/trust/security",
 };
 
 export default function Home() {

@@ -1,0 +1,12 @@
+{
+  "id": "a06-js-only-shell",
+  "kind": "adversarial",
+  "vendor": "Anthropic",
+  "urls": ["https://www.anthropic.com/legal/aup"],
+  "framework": "NIST_AI_RMF",
+  "expect": {
+    "insufficient_evidence": true,
+    "controls": [],
+    "notes": "Returns HTTP 200 but ~1 char of extractable text — client-rendered shell. Correct behavior: FETCH_JS_ONLY, treated as unavailable rather than as 'vendor discloses nothing'. This is the dangerous variant: a 200 that looks like evidence of absence."
+  }
+}

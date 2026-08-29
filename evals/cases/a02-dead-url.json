@@ -1,0 +1,12 @@
+{
+  "id": "a02-dead-url",
+  "kind": "adversarial",
+  "vendor": "Anthropic",
+  "urls": ["https://www.anthropic.com/trust-center"],
+  "framework": "NIST_AI_RMF",
+  "expect": {
+    "insufficient_evidence": true,
+    "controls": [],
+    "notes": "URL 404s. Correct behavior: FETCH_404 in toolErrors, empty sources array, no fabricated retrieved_at. Found live on 2026-08-29 — the first run listed this dead URL as a source with an invented retrieval date."
+  }
+}

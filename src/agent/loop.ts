@@ -45,6 +45,14 @@ export async function runTriage(input: TriageInput): Promise<TriageResult> {
   const started = Date.now();
   const toolErrors: ToolError[] = [];
   const sessionDocs = new Map<string, string>(); // session memory: url -> parsed text
+  /**
+   * Sources are recorded HERE, from actual successful fetches, and never taken
+   * from model output. A model asked to list its sources will happily invent a
+   * retrieved_at for a page that 404'd — observed on the first live run. In a
+   * tool whose product is provenance, the source list must be a fact of the
+   * execution, not a claim of the model.
+   */
+  const verifiedSources: { url: string; retrieved_at: string; doc_type: "trust_page" | "dpa" | "model_card" | "whitepaper" | "other" }[] = [];
 
   const record = <T>(r: Result<T>) => {
     if (!r.ok) toolErrors.push(r);
@@ -65,7 +73,14 @@ export async function runTriage(input: TriageInput): Promise<TriageResult> {
         const fetched = await fetchPage(url);
         if (!fetched.ok) return record(fetched);
         const parsed = await parseDocument(fetched.value);
-        if (parsed.ok) sessionDocs.set(url, parsed.value.text);
+        if (parsed.ok) {
+          sessionDocs.set(url, parsed.value.text);
+          verifiedSources.push({
+            url,
+            retrieved_at: fetched.value.retrieved_at,
+            doc_type: inferDocType(url),
+          });
+        }
         return record(parsed);
       },
     }),
@@ -121,12 +136,22 @@ Gather and verify the evidence. Report what you verified and what you could not.
 
 ${gather.text}
 
-Sources reviewed: ${JSON.stringify(input.urls)}
+VERIFIED SOURCES (cite by index into this list; nothing else may be cited):
+${verifiedSources.length
+  ? verifiedSources.map((s, i) => `  [${i}] ${s.url} (${s.doc_type}, retrieved ${s.retrieved_at})`).join("\n")
+  : "  (none — no source was successfully fetched and parsed)"}
 Vendor: ${input.vendor} · Framework: ${input.framework}
 
 Any control without a verified quote is no_evidence. If nothing was verified, set insufficient_evidence to true.`,
     });
-    entry = emitted.object;
+    // Provenance is not negotiable: the executed source list wins over the
+    // model's account of it, always.
+    entry = { ...emitted.object, sources: verifiedSources };
+    if (verifiedSources.length === 0) {
+      entry.insufficient_evidence = true;
+      entry.controls = [];
+      entry.confidence = "low";
+    }
   } catch {
     // One retry is handled inside generateObject; a second failure exits gracefully
     // rather than emitting a partial artifact.
@@ -156,4 +181,14 @@ export function gracefulExit(input: TriageInput): RegisterEntry {
     confidence: "low",
     insufficient_evidence: true,
   };
+}
+
+
+function inferDocType(url: string): "trust_page" | "dpa" | "model_card" | "whitepaper" | "other" {
+  const u = url.toLowerCase();
+  if (u.includes("trust") || u.includes("security")) return "trust_page";
+  if (u.includes("dpa") || u.includes("data-processing")) return "dpa";
+  if (u.includes("model-card") || u.includes("model_card")) return "model_card";
+  if (u.endsWith(".pdf")) return "whitepaper";
+  return "other";
 }
