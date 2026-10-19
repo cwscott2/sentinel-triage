@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"tests/**/*.test.ts\"",
     "eval": "tsx --env-file=.env.local evals/run.ts",
     "embed:controls": "tsx --env-file=.env.local scripts/embed-controls.ts",
     "prep:labels": "tsx --env-file=.env.local evals/prep-labels.ts",

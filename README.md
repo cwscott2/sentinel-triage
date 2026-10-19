@@ -56,7 +56,7 @@ flowchart TB
 
     subgraph LOOP["Agent loop — step cap 12"]
       direction TB
-      ORCH["Orchestrator"] --> PLAN["<b>Plan next action</b><br/>gpt-4o · judgment only"]
+      ORCH["Orchestrator"] --> PLAN["<b>Plan next action</b><br/>gpt-6-luna · judgment only"]
       PLAN --> DEC{"Tool call<br/>needed?"}
       DEC -->|yes| DISPATCH["Tool dispatch<br/>+ Zod validate return"]
       DISPATCH --> ERRQ{"Typed<br/>ToolError?"}
@@ -70,7 +70,7 @@ flowchart TB
     subgraph TOOLS["Tools"]
       direction TB
       T1["<b>fetch_page</b><br/>404 · timeout · JS-only"]
-      T2["<b>parse_document</b><br/>gpt-4o-mini extraction<br/>image-PDF → unparseable"]
+      T2["<b>parse_document</b><br/>gpt-6-luna extraction<br/>image-PDF → unparseable"]
       T3["<b>retrieve_controls</b><br/>in-memory cosine over 12<br/>below threshold → empty"]
       T4["<b>verify_citation</b><br/>deterministic · no model"]
     end
@@ -93,9 +93,15 @@ flowchart TB
 
 | Step | Model | Why |
 |---|---|---|
-| Plan / control-status judgment | `gpt-4o` | The only step requiring real reasoning over ambiguous control language |
-| Document extraction, chunk classification | `gpt-4o-mini` | High token volume, low judgment. ~90% of tokens, ~10% of cost |
+| Plan / control-status judgment | `gpt-6-luna` | The only step requiring real reasoning over ambiguous control language |
+| Document extraction, chunk classification | `gpt-6-luna` | High token volume, low judgment. ~90% of tokens |
 | Citation verification | **none** | Deterministic string matching. A model here would defeat the purpose |
+
+The model ID lives in one place, `src/lib/openaiModels.ts`, and `npm test` fails if a retired ID
+appears anywhere else (including this file). The GPT-4o pair this app launched on shuts down on
+2027-01-14; OpenAI names `gpt-6-luna` as the replacement for both, which collapsed the two-tier
+routing into one model. Reasoning effort is sent as `none` on every call. Re-check the ID against
+OpenAI's deprecations page at each wrap-up.
 
 ### Tool stack
 

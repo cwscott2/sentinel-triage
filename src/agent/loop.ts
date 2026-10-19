@@ -13,6 +13,7 @@ import { fetchPage } from "@/tools/fetchPage";
 import { parseDocument } from "@/tools/parseDocument";
 import { retrieveControls } from "@/tools/retrieveControls";
 import { verifyCitation } from "@/tools/verifyCitation";
+import { OPENAI_MODEL_ID, OPENAI_PROVIDER_OPTIONS } from "@/lib/openaiModels";
 
 const MAX_STEPS = Number(process.env.MAX_STEPS ?? 12);
 
@@ -26,8 +27,11 @@ const VALID_CONTROL_IDS = new Set(
   (controlSet as { control_id: string }[]).map((c) => c.control_id)
 );
 
-const JUDGMENT_MODEL = openai("gpt-4o");
-const EXTRACTION_MODEL = openai("gpt-4o-mini");
+// One model for both roles since 2026-10-19: see src/lib/openaiModels.ts. The
+// judgment / extraction split below is kept so the roles stay visible in the
+// code and can diverge again without touching the call sites.
+const JUDGMENT_MODEL = openai(OPENAI_MODEL_ID);
+const EXTRACTION_MODEL = openai(OPENAI_MODEL_ID);
 
 export interface TriageInput {
   vendor: string;
@@ -131,7 +135,7 @@ export async function runTriage(
 
         // Full text stays server-side for verify_citation. It never enters the
         // judgment model's context: returning it here put 182k tokens through
-        // gpt-4o on the first live run — ~3x the cost target — because tool
+        // the judgment model on the first live run — ~3x the cost target — because tool
         // results persist across every subsequent step.
         sessionDocs.set(url, parsed.value.text);
         verifiedSources.push({
@@ -144,6 +148,7 @@ export async function runTriage(
         // high token volume, low judgment, cheap model.
         const extracted = await generateText({
           model: EXTRACTION_MODEL,
+          providerOptions: OPENAI_PROVIDER_OPTIONS,
           prompt: `${EXTRACTION_PROMPT}\n\n---\n${parsed.value.text.slice(0, 60_000)}`,
         });
 
@@ -188,6 +193,7 @@ export async function runTriage(
   // Phase 1 — evidence gathering. Step cap is the guardrail against runaway loops.
   const gather = await generateText({
     model: JUDGMENT_MODEL,
+    providerOptions: OPENAI_PROVIDER_OPTIONS,
     system: SYSTEM_PROMPT,
     maxSteps: MAX_STEPS,
     tools,
@@ -218,6 +224,7 @@ Gather and verify the evidence. Report what you verified and what you could not.
   try {
     const emitted = await generateObject({
       model: JUDGMENT_MODEL,
+      providerOptions: OPENAI_PROVIDER_OPTIONS,
       schema: RegisterEntry,
       prompt: `Produce the risk-register entry from this verified evidence.
 
