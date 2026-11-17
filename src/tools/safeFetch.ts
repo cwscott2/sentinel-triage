@@ -11,8 +11,10 @@
  *   1. Only http: and https:.
  *   2. The host must resolve only to public addresses. Loopback, RFC 1918,
  *      link-local (incl. metadata), CGNAT, unspecified, multicast/reserved,
- *      IPv6 loopback/ULA/link-local, and IPv4-mapped/compatible/NAT64/6to4
- *      forms of any of those are refused. Unparseable addresses are refused.
+ *      and IPv4-mapped/compatible/NAT64/6to4 forms of any of those are
+ *      refused. IPv6 is an allowlist: only global unicast 2000::/3, minus
+ *      2001::/23 (incl. Teredo) and 2001:db8::/32. Unparseable addresses are
+ *      refused.
  *   3. Redirects are followed by hand (max MAX_REDIRECTS), each target checked
  *      again by rule 1 and 2.
  *   4. The socket itself is opened through a lookup that applies rule 2 to the
@@ -125,10 +127,16 @@ export function isBlockedAddress(address: string): boolean {
   }
   // 2002::/16 6to4 embeds an IPv4 address in bytes 2..5.
   if (b[0] === 0x20 && b[1] === 0x02) return isBlockedV4(v4FromBytes(b.slice(2, 6)));
-  if ((b[0] & 0xfe) === 0xfc) return true; // fc00::/7 unique local
-  if (b[0] === 0xfe && (b[1] & 0xc0) === 0x80) return true; // fe80::/10 link-local
-  if (b[0] === 0xfe && (b[1] & 0xc0) === 0xc0) return true; // fec0::/10 site-local (deprecated)
-  if (b[0] === 0xff) return true; // ff00::/8 multicast
+  // Everything else is an allowlist: only global unicast 2000::/3 may pass.
+  // This refuses ULA fc00::/7, link-local fe80::/10, site-local fec0::/10,
+  // multicast ff00::/8, discard 100::/64, local-use NAT64 64:ff9b:1::/48 and
+  // any prefix IANA assigns later outside 2000::/3.
+  if ((b[0] & 0xe0) !== 0x20) return true;
+  // Special-purpose blocks inside 2000::/3: 2001::/23 (IETF protocol
+  // assignments, incl. Teredo 2001::/32, which embeds an obfuscated IPv4
+  // address) and 2001:db8::/32 (documentation).
+  if (b[0] === 0x20 && b[1] === 0x01 && b[2] <= 0x01) return true;
+  if (b[0] === 0x20 && b[1] === 0x01 && b[2] === 0x0d && b[3] === 0xb8) return true;
   return false;
 }
 

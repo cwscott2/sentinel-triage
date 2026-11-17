@@ -53,6 +53,8 @@ test("blocks loopback, private, link-local, CGNAT, unspecified and IPv6 internal
     "::ffff:127.0.0.1", "::ffff:7f00:1", "::ffff:10.0.0.1", "::ffff:169.254.169.254",
     "::ffff:a9fe:a9fe", "::ffff:192.168.0.1", "::ffff:100.64.0.1", "::ffff:0.0.0.0",
     "::127.0.0.1", "64:ff9b::a9fe:a9fe", "2002:7f00:1::1",
+    "64:ff9b:1::a00:1", "2001:0:4136:e378:8000:63bf:3fff:fdd2", "100::1", "2001:db8::1",
+    "fec0::1", "4000::1",
     "[::1]", "not-an-ip", "",
   ];
   for (const ip of blocked) assert.equal(isBlockedAddress(ip), true, `${ip} should be blocked`);
