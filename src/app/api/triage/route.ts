@@ -8,7 +8,7 @@ export const maxDuration = 120;
 
 const Body = z.object({
   vendor: z.string().min(1).max(80),
-  urls: z.array(z.string().url()).min(1).max(3),
+  urls: z.array(z.url()).min(1).max(3),
   framework: Framework.default("NIST_AI_RMF"),
 });
 
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   if (!limit.ok) return json({ error: limit.reason }, 429);
 
   const parsed = Body.safeParse(await req.json());
-  if (!parsed.success) return json({ error: parsed.error.flatten() }, 400);
+  if (!parsed.success) return json({ error: z.flattenError(parsed.error) }, 400);
 
   const disallowed = parsed.data.urls.filter((u) => !ALLOWED_URLS.has(u));
   if (disallowed.length > 0) {
