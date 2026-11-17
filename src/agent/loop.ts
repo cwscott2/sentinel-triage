@@ -1,4 +1,4 @@
-import { generateText, generateObject, tool } from "ai";
+import { generateText, generateObject, stepCountIs, tool } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import {
@@ -104,7 +104,7 @@ export async function runTriage(
     fetch_page: tool({
       description:
         "Check that a vendor URL is reachable. Returns status only — call parse_document to read it.",
-      parameters: z.object({ url: z.string().url() }),
+      inputSchema: z.object({ url: z.url() }),
       execute: async ({ url }) => bound(await (async () => {
         const r = await fetchPage(url);
         if (!r.ok) return record(r);
@@ -126,7 +126,7 @@ export async function runTriage(
     parse_document: tool({
       description:
         "Extract AI-governance claims from a fetched page. Returns a bounded claim list, not the raw document.",
-      parameters: z.object({ url: z.string().url() }),
+      inputSchema: z.object({ url: z.url() }),
       execute: async ({ url }) => {
         const fetched = await fetchPage(url);
         if (!fetched.ok) return record(fetched);
@@ -165,7 +165,7 @@ export async function runTriage(
     retrieve_controls: tool({
       description:
         "Find framework controls matching a vendor claim. Returns empty if nothing clears the similarity threshold.",
-      parameters: z.object({ claim: z.string() }),
+      inputSchema: z.object({ claim: z.string() }),
       execute: async ({ claim }) =>
         record(await retrieveControls(input.framework, claim)),
     }),
@@ -173,7 +173,7 @@ export async function runTriage(
     verify_citation: tool({
       description:
         "REQUIRED before marking any control met or partial. Confirms the quote exists verbatim in a parsed source.",
-      parameters: z.object({ quote: z.string(), url: z.string().url() }),
+      inputSchema: z.object({ quote: z.string(), url: z.url() }),
       execute: async ({ quote, url }) => {
         const source = sessionDocs.get(url);
         if (!source) {
@@ -195,7 +195,7 @@ export async function runTriage(
     model: JUDGMENT_MODEL,
     providerOptions: OPENAI_PROVIDER_OPTIONS,
     system: SYSTEM_PROMPT,
-    maxSteps: MAX_STEPS,
+    stopWhen: stepCountIs(MAX_STEPS),
     tools,
     onStepFinish: ({ toolCalls }) => {
       stepCount++;
@@ -327,8 +327,8 @@ Any control without a verified quote is no_evidence. If nothing was verified, se
     latencyMs: Date.now() - started,
     trace,
     usage: {
-      promptTokens: gather.usage?.promptTokens ?? 0,
-      completionTokens: gather.usage?.completionTokens ?? 0,
+      promptTokens: gather.totalUsage?.inputTokens ?? 0,
+      completionTokens: gather.totalUsage?.outputTokens ?? 0,
     },
   };
 }

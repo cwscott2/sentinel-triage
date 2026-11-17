@@ -8,8 +8,9 @@
  * nothing else may spell a model ID.
  *
  * `gpt-6-luna` is a reasoning model: it rejects `temperature` unless reasoning
- * effort is `none`, and the `ai` SDK (v4) does not recognise the `gpt-6` prefix
- * as a reasoning model, so the effort is passed explicitly on every call.
+ * effort is `none`. `@ai-sdk/openai` 2.x (AI SDK v5) classifies any `gpt-5`+
+ * ID as a reasoning model, but the effort is still passed explicitly on every
+ * call so the behaviour does not depend on the provider's default.
  *
  * Re-check this file against https://developers.openai.com/api/docs/deprecations
  * at each wrap-up (app-engrg-docs CROSS-APP-ACTIONS §9).

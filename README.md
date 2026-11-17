@@ -69,7 +69,7 @@ flowchart TB
 
     subgraph TOOLS["Tools"]
       direction TB
-      T1["<b>fetch_page</b><br/>404 · timeout · JS-only"]
+      T1["<b>fetch_page</b><br/>404 · timeout · JS-only · blocked (SSRF guard)"]
       T2["<b>parse_document</b><br/>gpt-6-luna extraction<br/>image-PDF → unparseable"]
       T3["<b>retrieve_controls</b><br/>in-memory cosine over 12<br/>below threshold → empty"]
       T4["<b>verify_citation</b><br/>deterministic · no model"]

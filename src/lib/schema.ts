@@ -4,8 +4,8 @@ export const Framework = z.enum(["NIST_AI_RMF", "EU_AI_ACT", "ISO_42001"]);
 export type Framework = z.infer<typeof Framework>;
 
 export const SourceRef = z.object({
-  url: z.string().url(),
-  retrieved_at: z.string().datetime(),
+  url: z.url(),
+  retrieved_at: z.iso.datetime(),
   doc_type: z.enum(["trust_page", "dpa", "model_card", "whitepaper", "other"]),
 });
 
@@ -54,6 +54,8 @@ export type ToolErrorCode =
   | "FETCH_404"
   | "FETCH_TIMEOUT"
   | "FETCH_JS_ONLY"
+  | "FETCH_BLOCKED"
+  | "FETCH_TOO_LARGE"
   | "UNPARSEABLE"
   | "UNSUPPORTED_LANGUAGE"
   | "NO_MATCH_ABOVE_THRESHOLD"
