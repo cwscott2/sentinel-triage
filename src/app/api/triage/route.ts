@@ -4,6 +4,8 @@ import { runTriage } from "@/agent/loop";
 import { Framework } from "@/lib/schema";
 import { ALLOWED_URLS, checkLimits } from "@/lib/demo";
 import { flushTracing } from "@/lib/tracing";
+import { fixtureIdOf } from "@/lib/fixtures";
+import { fixtureFetchGuard } from "@/lib/fixtureServer";
 
 export const maxDuration = 120;
 
@@ -45,12 +47,21 @@ export async function POST(req: NextRequest) {
     }, 403);
   }
 
+  // Guardrail presets run against fixture pages bundled with the app. A request
+  // must be all fixtures or none: one run is either sealed off from the network
+  // or it is an ordinary run.
+  const fixtureCount = parsed.data.urls.filter((u) => fixtureIdOf(u) !== null).length;
+  if (fixtureCount > 0 && fixtureCount < parsed.data.urls.length) {
+    return json({ error: "Fixture pages and live vendor URLs cannot be mixed in one run." }, 400);
+  }
+  const options = fixtureCount > 0 ? { fetchGuard: fixtureFetchGuard() } : {};
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       const send = (o: unknown) => controller.enqueue(encoder.encode(JSON.stringify(o) + "\n"));
       try {
-        const result = await runTriage(parsed.data, (e) => send({ type: "step", ...e }));
+        const result = await runTriage(parsed.data, (e) => send({ type: "step", ...e }), options);
         send({ type: "result", ...result });
       } catch (e) {
         send({ type: "error", error: "Triage failed", detail: String(e) });

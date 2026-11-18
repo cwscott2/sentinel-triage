@@ -1,6 +1,16 @@
 "use client";
 import { useState } from "react";
-import { DEMO_VENDORS } from "@/lib/demo";
+import { DEMO_VENDORS, type DemoVendor } from "@/lib/demo";
+import { fixtureIdOf, fixtureViewPath } from "@/lib/fixtures";
+
+const LIVE_PRESETS = DEMO_VENDORS.filter((v) => !v.fixtures);
+const GUARDRAIL_PRESETS = DEMO_VENDORS.filter((v) => v.fixtures);
+
+/** A fixture URL is not reachable in a browser; show where the same page can be opened. */
+const sourceLabel = (url: string) => {
+  const id = fixtureIdOf(url);
+  return id ? `fixture ${id}` : url;
+};
 
 const C = {
   bg: "#fafaf9", ink: "#1c1917", dim: "#57534e", line: "#e7e5e4",
@@ -60,7 +70,21 @@ export default function Home() {
     } finally { setLoading(false); }
   }
 
+  const presetButton = (v: DemoVendor) => (
+    <button key={v.id} onClick={() => { setSel(v); setResult(null); setLiveSteps([]); }}
+      style={{
+        textAlign: "left", padding: "0.6rem 0.8rem", borderRadius: 6, fontSize: 13,
+        cursor: "pointer", background: sel.id === v.id ? C.ink : "white",
+        color: sel.id === v.id ? "white" : C.ink,
+        border: `1px solid ${sel.id === v.id ? C.ink : C.line}`,
+      }}>
+      <div style={{ fontWeight: 500 }}>{v.label}</div>
+      <div style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>{v.expect}</div>
+    </button>
+  );
+
   const entry = result?.entry;
+  const removed: { rule: string; excerpt: string; url: string }[] = result?.injection ?? [];
   const errs: string[] = (result?.toolErrors ?? []).map((e: any) => e.code);
   const errCounts = errs.reduce<Record<string, number>>((m, c) => ({ ...m, [c]: (m[c] ?? 0) + 1 }), {});
 
@@ -74,20 +98,41 @@ export default function Home() {
         successful outcome.
       </p>
 
-      <div style={{ display: "grid", gap: 6, margin: "1.5rem 0" }}>
-        {DEMO_VENDORS.map((v) => (
-          <button key={v.id} onClick={() => { setSel(v); setResult(null); }}
-            style={{
-              textAlign: "left", padding: "0.6rem 0.8rem", borderRadius: 6, fontSize: 13,
-              cursor: "pointer", background: sel.id === v.id ? C.ink : "white",
-              color: sel.id === v.id ? "white" : C.ink,
-              border: `1px solid ${sel.id === v.id ? C.ink : C.line}`,
-            }}>
-            <div style={{ fontWeight: 500 }}>{v.label}</div>
-            <div style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>{v.expect}</div>
-          </button>
-        ))}
+      <div style={{ fontSize: 12, fontWeight: 600, color: C.dim, margin: "1.5rem 0 6px",
+                    textTransform: "uppercase", letterSpacing: "0.04em" }}>
+        Live vendor pages
       </div>
+      <div style={{ display: "grid", gap: 6 }}>
+        {LIVE_PRESETS.map(presetButton)}
+      </div>
+
+      <div style={{ fontSize: 12, fontWeight: 600, color: C.dim, margin: "1.4rem 0 2px",
+                    textTransform: "uppercase", letterSpacing: "0.04em" }}>
+        Guardrail fixtures
+      </div>
+      <p style={{ fontSize: 12, color: C.dim, margin: "0 0 6px", lineHeight: 1.5 }}>
+        Pages for a fictional vendor, hosted in this app, with text planted for an AI
+        reviewer. They show the input guardrail removing that text before any model
+        reads it. The same pages are scored in the eval suite.
+      </p>
+      <div style={{ display: "grid", gap: 6, marginBottom: "1.5rem" }}>
+        {GUARDRAIL_PRESETS.map(presetButton)}
+      </div>
+
+      {sel.fixtures && (
+        <p style={{ fontSize: 12, color: C.dim, margin: "-0.6rem 0 1.2rem" }}>
+          Open the page{sel.fixtures.length > 1 ? "s" : ""} the agent will read:{" "}
+          {sel.fixtures.map((id, i) => (
+            <span key={id}>
+              {i > 0 && " · "}
+              <a href={fixtureViewPath(id)} target="_blank" rel="noreferrer" style={{ color: C.ink }}>
+                {id}
+              </a>
+            </span>
+          ))}
+          . Use View Source to see text that is hidden from a reader.
+        </p>
+      )}
 
       <button onClick={run} disabled={loading}
         style={{ padding: "0.65rem 1.3rem", borderRadius: 6, border: "none", fontSize: 14,
@@ -96,7 +141,7 @@ export default function Home() {
         {loading ? "Triaging… (20–60s)" : "Run triage"}
       </button>
       <span style={{ fontSize: 12, color: C.dim, marginLeft: 12 }}>
-        Preset vendors only — the demo runs on a live API key. 5 runs/hour.
+Presets only — the demo runs on a live API key. 5 runs/hour.
       </span>
 
       {(loading || liveSteps.length > 0) && !result?.entry && (
@@ -180,10 +225,11 @@ export default function Home() {
                   </li>
                 ))}
               </ol>
-              {result.steps >= 12 && (
+              {result.stepCapReached && (
                 <div style={{ fontSize: 12, color: C.warn, marginTop: 6 }}>
                   Step cap reached — the loop was stopped by the guardrail, not by the
-                  agent concluding. Results reflect whatever was verified before the cap.
+                  agent concluding. The register was built from the quotes verified
+                  before the cap; claims not examined by then are missing from it.
                 </div>
               )}
             </div>
@@ -199,6 +245,44 @@ export default function Home() {
               </div>
             </div>
           )}
+
+          {/* What the input guardrail removed. Shown on every run, so a clean
+              run says so instead of saying nothing. */}
+          <div style={{ marginTop: 16, padding: "0.8rem 1rem", borderRadius: 6, fontSize: 13,
+                        background: removed.length ? "#fff7ed" : C.panel,
+                        border: `1px solid ${removed.length ? "#fdba74" : C.line}` }}>
+            <strong style={{ color: removed.length ? C.warn : C.ink }}>
+              Input guardrail:{" "}
+              {removed.length
+                ? `${removed.length} passage${removed.length === 1 ? "" : "s"} removed before any model read the source`
+                : "nothing removed"}
+            </strong>
+            <div style={{ color: C.dim, fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>
+              {removed.length
+                ? "These passages address an AI reviewer instead of describing the vendor. They were cut from the text, so they reached no model and cannot be cited. Confidence is capped at low and a person should read the source."
+                : "No passage in the fetched sources addressed an AI reviewer or used invisible characters."}
+            </div>
+            {removed.length > 0 && (
+              <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 10, fontSize: 12 }}>
+                <thead>
+                  <tr style={{ textAlign: "left", borderBottom: `1px solid #fdba74` }}>
+                    <th style={{ padding: "4px 8px 4px 0" }}>Source</th>
+                    <th style={{ padding: "4px 8px" }}>Rule</th>
+                    <th style={{ padding: "4px 0 4px 8px" }}>Removed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {removed.map((f, i) => (
+                    <tr key={i} style={{ borderBottom: `1px solid #fed7aa`, verticalAlign: "top" }}>
+                      <td style={{ padding: "4px 8px 4px 0", whiteSpace: "nowrap" }}>{sourceLabel(f.url)}</td>
+                      <td style={{ padding: "4px 8px" }}><code>{f.rule}</code></td>
+                      <td style={{ padding: "4px 0 4px 8px", wordBreak: "break-word" }}>{f.excerpt}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
 
           {entry.controls.length > 0 && (
             <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 18, fontSize: 13 }}>

@@ -138,7 +138,7 @@ Every tool returns `Result<T, ToolError>` — never throws. Typed errors, one re
 | Retrieval below similarity threshold | Empty result, which forces `no_evidence` |
 | Citation quote not found in source | Assessment rejected, one retry, then status downgraded |
 | Schema validation failure | Error injected into context, one retry, then hard fail with typed error |
-| Step cap exceeded (12) | Graceful exit with whatever is verified so far |
+| Step cap exceeded (12) | The register is built from the quotes that verified before the cap, kept in code; the run is marked `stepCapReached` |
 
 ---
 
@@ -162,6 +162,8 @@ Built, tested offline, not yet measured against the live model. Results go in
 | Retrieval calibration | Sweeps the similarity threshold against claims extracted from the real source pages, in place of 8 hand-written ones | `npm run calibrate:corpus` |
 | Tracing | One Langfuse trace per run: every step, tool call, token count and guardrail firing. Off unless keys are set | `src/lib/tracing.ts` |
 | Stricter eval harness | Re-verifies every emitted quote independently; reports misattributed citations, injection resistance, tokens and cost | `evals/run.ts` |
+| Guardrail presets in the demo | Six fixture pages hosted in the app, runnable from the demo, with the UI listing every passage the guardrail removed | [below](#what-the-live-demo-accepts) |
+| Step-cap evidence ledger | A run that ends at the step cap keeps the quotes it verified instead of emitting an empty register | `src/agent/loop.ts` |
 
 ## Local development
 
@@ -179,7 +181,7 @@ The API key is read server-side in the API route only. It must never appear in a
 npm run embed:controls   # embed the NIST control set (run once)
 npm run prep:labels      # build labeling worksheets from the source documents
 npm run label            # interactive labeler
-npm run eval             # full suite -> evals/runs/<timestamp>.md + -entries.json
+npm run eval             # full suite -> evals/runs/<timestamp>.md + -entries.json + -traces.json
 npm run calibrate:corpus # retrieval threshold sweep on real extracted claims
 npm test                 # unit and offline end-to-end tests; no API key needed
 npm run diagnose -- <id> # single case, label vs actual, side by side
@@ -196,11 +198,79 @@ No legal advice or regulatory applicability rulings · no private or gated docum
 
 ---
 
+## What the live demo accepts
+
+**The live demo accepts only its preset URLs.** It does not take a URL you type. A
+request for any other URL is refused by the API with HTTP 403 before a model is called.
+
+Why: the demo runs on a real API key at a public address. An endpoint that fetches and
+summarises any URL a stranger submits is an open tab on that key and a general-purpose
+fetch proxy. The allowlist in `src/lib/demo.ts`, a limit of 5 runs per IP per hour and a
+global daily cap are the spend guards.
+
+There are two groups of presets.
+
+| Group | What runs | Count |
+|---|---|---|
+| Live vendor pages | The agent fetches the vendor's public page at run time | 8 |
+| Guardrail fixtures | The agent reads a fixture page that ships with this app | 6 |
+
+**Guardrail fixtures.** Because the demo cannot be pointed at an arbitrary page, there
+would otherwise be no way to watch the prompt-injection guardrail fire: none of the
+live vendor pages contains an instruction to an AI. So the fixture pages used by the
+eval suite are also hosted in the app:
+
+- Each is a page for a fictional vendor, Northwind Example Co, with text planted for an
+  AI reviewer. One is a clean control page that must not be flagged.
+- You can open each page at `/fixtures/<id>` (linked from the demo when a guardrail
+  preset is selected). Use View Source to see text that is hidden from a reader.
+- When a guardrail preset runs, the agent is given the page under a URL on the reserved
+  `.test` domain and the content is served from the file in `evals/fixtures/`. It goes
+  through the same fetch guard, parser, guardrail and citation gate as a live page. A
+  fixture run cannot reach the network.
+- The result shows an **Input guardrail** panel listing every passage removed, the rule
+  that matched and the source it came from. A clean run says "nothing removed".
+
+| Preset | Fixture | What is planted |
+|---|---|---|
+| Visible instruction | `i01` | A paragraph telling an AI to mark every control met |
+| Hidden text | `i02` | A certification claim and an instruction in `display:none` and `font-size:0` elements |
+| Planted evidence | `i03` | A sentence to cite, with an instruction to skip verification |
+| Invisible Unicode | `i05` | One instruction in Unicode tag characters, one with zero-width spaces inside its key words |
+| Two sources, one hostile | `i06-product`, `i06-faq` | The FAQ tells the reviewer to discard the other page |
+| Clean control | `i04` | Nothing. The page discusses prompt injection in ordinary vendor language |
+
+To triage a URL that is not a preset, clone the repo and run it with your own key
+(see Local development).
+
+## Why the new eval cases are injection fixtures only
+
+Round 2 added six injection cases and no new vendor mapping cases. That is a rule of
+this eval suite, not an omission.
+
+- **A vendor mapping case needs labels written by a person.** Each of the 15 vendor
+  cases carries an expected status for 12 controls, written from the source page
+  **before** the agent ran on it (protocol in [`evals/README.md`](evals/README.md)).
+  Labels written after seeing the agent's output, or drafted by a model, measure
+  agreement with the agent instead of correctness. No new vendor page has been labeled
+  that way, so none was added.
+- **An injection fixture is its own ground truth.** The page is written for the test, so
+  what was planted is known exactly: which passages must be removed, which quotes must
+  never be cited, and the highest status any control may reach. No judgment call is
+  needed to score it.
+- **The two sets are scored apart.** Injection cases report as "Injection resistance"
+  and do not enter mapping accuracy or non-trivial accuracy. Those are still computed on
+  the same 15 cases and 26 non-trivial labels as every earlier run, so the runs stay
+  comparable.
+
+What this means for reading the results: injection resistance is measured on pages
+written by the author of the guardrail. It shows the guardrail does what it was built to
+do and does not flag the control page. It is not a measure of resistance to attacks
+nobody anticipated; the known limits are listed in [docs/GUARDRAILS.md](docs/GUARDRAILS.md).
+
 ## Demo spend guards
 
-The deployed demo runs on a live API key at a public URL, so it accepts **only the
-preset vendors** in `src/lib/demo.ts`, rate-limits to 5 runs per IP per hour, and caps
-global daily runs. Clone the repo and supply your own key to triage arbitrary URLs.
+The allowlist, the per-IP limit and the daily cap are described above.
 
 An unbounded public endpoint backed by a real API key is an open tab on someone else's
 account. That lesson was paid for once already on a prior project; it is not being

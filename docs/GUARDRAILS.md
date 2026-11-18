@@ -23,7 +23,7 @@ an instruction.
 | Fetched text cannot instruct the agent | Passages addressed to an AI are removed before any model sees the text, and reported | `src/guardrails/injection.ts`, `src/tools/parseDocument.ts` |
 | Hidden text is not evidence | Elements hidden by the `hidden` attribute or inline style are removed before extraction | `src/tools/parseDocument.ts` |
 | A tool result cannot flood the context | Hard size ceiling on every tool return | `src/agent/loop.ts` |
-| The loop ends | Step cap, then a graceful exit with `insufficient_evidence: true` | `src/agent/loop.ts` |
+| The loop ends | Step cap. Quotes verified before the cap are kept in code and passed to emission; the run is marked `stepCapReached` | `src/agent/loop.ts` |
 | The public demo cannot be used to spend the key | Preset-vendor allowlist and rate limits, checked before any model call | `src/lib/demo.ts`, `src/app/api/triage/route.ts` |
 
 ## Prompt injection
@@ -85,5 +85,15 @@ it reaches the judgment model.
 - `tests/injection.test.ts`: each rule, the must-not-flag list, and the parser.
 - `tests/loop.injection.test.ts`: the whole loop against an injected page with
   scripted models that behave as if the injection worked. No network, no key.
-- `evals/cases-injection/`: four fixture cases run by `npm run eval` against
-  the live model: three attacks and one control page that must not be flagged.
+- `tests/fixtures.test.ts`: the invisible-Unicode and two-source fixtures
+  through the real parser, and the two-source case through the whole loop.
+- `evals/cases-injection/`: six fixture cases run by `npm run eval` against
+  the live model: five attacks and one control page that must not be flagged.
+
+### Seeing it in the demo
+
+The six fixture pages are also demo presets ("Guardrail fixtures"). Each can be
+opened at `/fixtures/<id>`. Running one shows an "Input guardrail" panel with
+every removed passage, its rule and its source. The fixture content is served
+from `evals/fixtures/` through the fetch seam, so a fixture run cannot reach
+the network; everything after the fetch is the production path.
