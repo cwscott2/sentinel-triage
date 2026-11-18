@@ -4,6 +4,10 @@
  * Emission then received an empty string as its only evidence and returned
  * no_evidence for every control, discarding quotes that had verified.
  *
+ * At the cap the model is now asked once for its report with tools switched
+ * off. (A first fix that handed emission a bare list of verified quotes made
+ * emission over-claim; see the comment in src/agent/loop.ts.)
+ *
  * Offline: fixture HTML through the fetch seam, scripted models through the
  * model seam. retrieve_controls is not called because it needs an embedding.
  */
@@ -62,6 +66,7 @@ test("evidence verified before the step cap reaches emission", async () => {
     call("1", "parse_document", { url: URL_ }),
     call("2", "verify_citation", { quote: Q1, url: URL_ }),
     call("3", "verify_citation", { quote: Q2, url: URL_ }), // step 3 = the cap; no summary follows
+    say("WRAP-UP: verified two quotes; MEASURE 2.10 and MAP 3.5 are addressed as posture."),
     emitted([
       { control_id: "MEASURE 2.10", status: "partial", citation: { source_index: 0, quote: Q1 }, rationale: "Stated." },
       { control_id: "MAP 3.5", status: "partial", citation: { source_index: 0, quote: Q2 }, rationale: "Stated." },
@@ -82,11 +87,19 @@ test("evidence verified before the step cap reaches emission", async () => {
   assert.equal(r.stepCapReached, true);
   assert.ok(r.trace.some((t) => t.note?.includes("step cap")), "the cap is not visible in the trace");
 
-  // The emission prompt carried both verified quotes and said why.
+  // Call 4 is the wrap-up: it carries the tool history, says the limit was
+  // reached, and offers no way to call a tool.
+  assert.equal(judgment.calls.length, 5);
+  const wrapUp = judgment.calls[3] as { prompt: unknown; toolChoice?: { type: string } };
+  const wrapUpPrompt = JSON.stringify(wrapUp.prompt);
+  assert.ok(wrapUpPrompt.includes("The step limit has been reached"));
+  assert.ok(wrapUpPrompt.includes(Q2), "tool history missing from the wrap-up call");
+  assert.equal(wrapUp.toolChoice?.type, "none");
+
+  // Emission got the model's report, not an empty string.
   const emissionPrompt = JSON.stringify(judgment.calls.at(-1)!.prompt);
-  assert.ok(emissionPrompt.includes(Q1), "first verified quote missing from emission");
-  assert.ok(emissionPrompt.includes(Q2), "second verified quote missing from emission");
-  assert.ok(emissionPrompt.includes("stopped at the step limit"));
+  assert.ok(emissionPrompt.includes("WRAP-UP: verified two quotes"));
+  assert.equal(r.totalUsage.inputTokens, 60); // 3 steps + wrap-up + emission + extraction
 
   const byId = new Map(r.entry.controls.map((c) => [c.control_id, c]));
   assert.equal(byId.get("MEASURE 2.10")?.status, "partial");
@@ -94,12 +107,13 @@ test("evidence verified before the step cap reaches emission", async () => {
   assert.equal(r.entry.controls.length, 12);
 });
 
-test("the ledger does not let an unverified quote through", async () => {
+test("a wrap-up report cannot get an unverified quote past the gate", async () => {
   const INVENTED = "Northwind publishes an annual third-party audit of every model.";
   const judgment = new ScriptedModel([
     call("1", "parse_document", { url: URL_ }),
     call("2", "verify_citation", { quote: Q1, url: URL_ }),
     call("3", "verify_citation", { quote: INVENTED, url: URL_ }),
+    say("WRAP-UP: the audit sentence is strong evidence."), // the report over-claims
     emitted([
       { control_id: "MEASURE 2.10", status: "partial", citation: { source_index: 0, quote: Q1 }, rationale: "Stated." },
       { control_id: "MEASURE 2.7", status: "met", citation: { source_index: 0, quote: INVENTED }, rationale: "Audit." },
@@ -116,7 +130,6 @@ test("the ledger does not let an unverified quote through", async () => {
     }
   );
   assert.equal(r.stepCapReached, true);
-  assert.ok(!JSON.stringify(judgment.calls.at(-1)!.prompt).includes(INVENTED), "an unverified quote entered the ledger");
   const byId = new Map(r.entry.controls.map((c) => [c.control_id, c]));
   assert.equal(byId.get("MEASURE 2.7")?.status, "no_evidence");
   assert.equal(byId.get("MEASURE 2.10")?.status, "partial");

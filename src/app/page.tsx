@@ -228,8 +228,8 @@ Presets only — the demo runs on a live API key. 5 runs/hour.
               {result.stepCapReached && (
                 <div style={{ fontSize: 12, color: C.warn, marginTop: 6 }}>
                   Step cap reached — the loop was stopped by the guardrail, not by the
-                  agent concluding. The register was built from the quotes verified
-                  before the cap; claims not examined by then are missing from it.
+                  agent concluding. The agent then reported on what it had verified
+                  by that point; claims it had not examined are missing from the register.
                 </div>
               )}
             </div>

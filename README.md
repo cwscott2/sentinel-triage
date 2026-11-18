@@ -2,7 +2,7 @@
 
 **Vendor AI Governance Triage Agent** — ingests a vendor's public documentation and emits a citation-backed AI risk-register entry mapped to NIST AI RMF, or abstains when the evidence isn't there.
 
-Capstone build. Axis Sentinel · Carl Scott.
+Capstone build. Airworthy Advisory · Carl Scott.
 
 **Live demo:** https://sentinel-triage-liart.vercel.app · **Eval history:** [docs/EVAL-HISTORY.md](docs/EVAL-HISTORY.md)
 
@@ -10,30 +10,38 @@ Capstone build. Axis Sentinel · Carl Scott.
 
 ## Results
 
-15-case eval suite. Four full runs. One improvement, two documented regressions.
+15 vendor cases with 26 non-trivial labels, scored the same way on every run.
+Injection fixture cases are scored separately.
 
-| Run | Headline acc. | Non-trivial acc. | Hallucinated citations |
-|---|---|---|---|
-| Baseline | 73.5% | 11.5% (3/26) | **0%** |
-| Fix 1 — dedup + complete register | 72.7% | **19.2% (5/26)** | **0%** |
-| Fix 2 — status rubric *(reverted)* | 68.2% | 11.5% | **0%** |
-| Fix 3 — citation gate in code | 71.2% | 7.7% (2/26) | **0%** |
+| Run | Headline acc. | Non-trivial acc. | Unverifiable citations | Abstention | Injection |
+|---|---|---|---|---|---|
+| 0 Baseline | 73.5% | 11.5% (3/26) | 0% ¹ | 3/4 | n/a |
+| 1 Dedup + complete register | 72.7% | 19.2% (5/26) | 0% ¹ | 3/4 | n/a |
+| 2 Status rubric *(reverted)* | 68.2% | 11.5% (3/26) | 0% ¹ | 3/4 | n/a |
+| 3 Citation gate in code | 71.2% | 7.7% (2/26) | 0% | 3/4 | n/a |
+| 4 Round 2 (2026-11-18) | 81.1% | **30.8% (8/26)** | 0/22 ² | 4/4 | 4/4 |
+| 5 Step-cap fix, first version *(replaced)* | 78.8% | 30.8% (8/26) | 0/44 ² | 2/4 | 3/4 |
+
+¹ The harness at the time confirmed that each cited source existed and did not
+re-verify the quote. ² Every emitted quote re-verified by the harness.
 
 **Read non-trivial accuracy, not headline.** The label set is 80% `no_evidence`, so an
-agent that emits `no_evidence` for everything scores **80.3%** — above a naive 80%
-target — while doing nothing. Non-trivial accuracy scores only the 26 labels where the
-expected status is not `no_evidence`; a null agent scores 0% there.
+agent that emits `no_evidence` for everything scores **80.3%** while doing nothing.
+Non-trivial accuracy scores only the 26 labels where the expected status is not
+`no_evidence`; a null agent scores 0% there.
 
-The agent currently sits **below the null baseline** on mapping accuracy. The root
-cause is retrieval recall, not judgment — diagnosed after two fixes aimed at the wrong
-layer, both reported. The metric that holds on every run is the hard gate: **zero
-hallucinated citations**.
+Where it stands: 8 of 26, against a target of 13. Run 4 is the best result so far and
+its cause is not isolated (the model changed between runs 3 and 4, along with the
+guardrail work). Run 5 was a fix that held the score and broke abstention; it was
+replaced, and the replacement has not been measured yet. What has held on every
+run is the hard gate: **no citation that fails verification.**
 
-**The 0% figure needs a caveat for the first three runs.** The harness at the time
-confirmed that each cited source existed and did not re-verify the quote. It does now.
-See the correction in [docs/EVAL-HISTORY.md](docs/EVAL-HISTORY.md).
+Two earlier claims in this repo were wrong and are corrected in
+[docs/EVAL-HISTORY.md](docs/EVAL-HISTORY.md): the "0%" for runs 0 to 2 was not
+independently verified, and the retrieval threshold is not the root cause of the low
+mapping score (calibration on real claims puts the retrieval ceiling at 24 of 26).
 
-Fix 3 lowered the score and was kept. Reverting it recovers ~11 points by permitting
+Fix 3 lowered the score and was kept. Reverting it recovers points by permitting
 unverified claims, which is the exact failure this tool exists to prevent.
 
 ---
@@ -138,18 +146,16 @@ Every tool returns `Result<T, ToolError>` — never throws. Typed errors, one re
 | Retrieval below similarity threshold | Empty result, which forces `no_evidence` |
 | Citation quote not found in source | Assessment rejected, one retry, then status downgraded |
 | Schema validation failure | Error injected into context, one retry, then hard fail with typed error |
-| Step cap exceeded (12) | The register is built from the quotes that verified before the cap, kept in code; the run is marked `stepCapReached` |
+| Step cap exceeded (12) | The model is asked once for its report with tools switched off; the register covers what was verified by then, and the run is marked `stepCapReached` |
 
 ---
 
 ## Status
 
-| Checkpoint | State |
-|---|---|
-| 1 — Agent Spec | Submitted |
-| 2 — Architecture & Tooling | Submitted |
-| 3 — Evals & Reliability | Submitted |
-| 4 — Ship & Demo | In progress |
+First built in August 2026 as a capstone (agent spec, architecture and tooling, evals,
+live demo). Extended in November 2026 as the capstone for the Build Fast with AI FDE
+course; that work is the Round 2 section below and is on the branch
+`claude/fde-capstone-hardening` until a live eval passes.
 
 ## Round 2 (2026-11): hardening
 
@@ -163,7 +169,7 @@ Built, tested offline, not yet measured against the live model. Results go in
 | Tracing | One Langfuse trace per run: every step, tool call, token count and guardrail firing. Off unless keys are set | `src/lib/tracing.ts` |
 | Stricter eval harness | Re-verifies every emitted quote independently; reports misattributed citations, injection resistance, tokens and cost | `evals/run.ts` |
 | Guardrail presets in the demo | Six fixture pages hosted in the app, runnable from the demo, with the UI listing every passage the guardrail removed | [below](#what-the-live-demo-accepts) |
-| Step-cap evidence ledger | A run that ends at the step cap keeps the quotes it verified instead of emitting an empty register | `src/agent/loop.ts` |
+| Step-cap wrap-up | A run that ends at the step cap reports what it verified instead of emitting an empty register | `src/agent/loop.ts` |
 
 ## Local development
 

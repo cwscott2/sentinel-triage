@@ -23,7 +23,7 @@ an instruction.
 | Fetched text cannot instruct the agent | Passages addressed to an AI are removed before any model sees the text, and reported | `src/guardrails/injection.ts`, `src/tools/parseDocument.ts` |
 | Hidden text is not evidence | Elements hidden by the `hidden` attribute or inline style are removed before extraction | `src/tools/parseDocument.ts` |
 | A tool result cannot flood the context | Hard size ceiling on every tool return | `src/agent/loop.ts` |
-| The loop ends | Step cap. Quotes verified before the cap are kept in code and passed to emission; the run is marked `stepCapReached` | `src/agent/loop.ts` |
+| The loop ends | Step cap. The model is then asked once for its report with tools switched off; the run is marked `stepCapReached` | `src/agent/loop.ts` |
 | The public demo cannot be used to spend the key | Preset-vendor allowlist and rate limits, checked before any model call | `src/lib/demo.ts`, `src/app/api/triage/route.ts` |
 
 ## Prompt injection

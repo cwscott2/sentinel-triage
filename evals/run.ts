@@ -265,7 +265,7 @@ expected status is something other than "no_evidence". A null agent scores 0% th
 ${rows.join("\n")}
 
 ${capped.length
-  ? `**Step cap reached on ${capped.length} case(s):** ${capped.join(", ")}. Gathering ended before the model summarised; the register was built from the evidence ledger kept in code. Claims not examined before the cap are missing from those rows.\n\n`
+  ? `**Step cap reached on ${capped.length} case(s):** ${capped.join(", ")}. Gathering ended before the model reported; it was asked for its report with tools switched off. Claims not examined before the cap are missing from those rows.\n\n`
   : ""}## Citations
 
 Every emitted quote was re-verified by this harness against the source text
