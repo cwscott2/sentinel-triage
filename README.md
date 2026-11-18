@@ -29,6 +29,10 @@ cause is retrieval recall, not judgment — diagnosed after two fixes aimed at t
 layer, both reported. The metric that holds on every run is the hard gate: **zero
 hallucinated citations**.
 
+**The 0% figure needs a caveat for the first three runs.** The harness at the time
+confirmed that each cited source existed and did not re-verify the quote. It does now.
+See the correction in [docs/EVAL-HISTORY.md](docs/EVAL-HISTORY.md).
+
 Fix 3 lowered the score and was kept. Reverting it recovers ~11 points by permitting
 unverified claims, which is the exact failure this tool exists to prevent.
 
@@ -147,6 +151,18 @@ Every tool returns `Result<T, ToolError>` — never throws. Typed errors, one re
 | 3 — Evals & Reliability | Submitted |
 | 4 — Ship & Demo | In progress |
 
+## Round 2 (2026-11): hardening
+
+Built, tested offline, not yet measured against the live model. Results go in
+[docs/EVAL-HISTORY.md](docs/EVAL-HISTORY.md) when the runs are done.
+
+| Addition | Summary | Detail |
+|---|---|---|
+| Prompt-injection guardrail | Text on a vendor page that addresses an AI reviewer is removed before any model sees it, cannot be cited, and is reported | [docs/GUARDRAILS.md](docs/GUARDRAILS.md) |
+| Retrieval calibration | Sweeps the similarity threshold against claims extracted from the real source pages, in place of 8 hand-written ones | `npm run calibrate:corpus` |
+| Tracing | One Langfuse trace per run: every step, tool call, token count and guardrail firing. Off unless keys are set | `src/lib/tracing.ts` |
+| Stricter eval harness | Re-verifies every emitted quote independently; reports misattributed citations, injection resistance, tokens and cost | `evals/run.ts` |
+
 ## Local development
 
 ```bash
@@ -164,6 +180,8 @@ npm run embed:controls   # embed the NIST control set (run once)
 npm run prep:labels      # build labeling worksheets from the source documents
 npm run label            # interactive labeler
 npm run eval             # full suite -> evals/runs/<timestamp>.md + -entries.json
+npm run calibrate:corpus # retrieval threshold sweep on real extracted claims
+npm test                 # unit and offline end-to-end tests; no API key needed
 npm run diagnose -- <id> # single case, label vs actual, side by side
 ```
 

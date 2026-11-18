@@ -92,3 +92,54 @@ prompt and trusted rather than checked:
 | Unbounded tool output | 652k chars of raw HTML into context | Hard ceiling on every tool return |
 
 Each fix moved a guarantee from instruction to mechanism.
+
+
+---
+
+## Correction, 2026-11-18: what "0% hallucinated citations" was measuring
+
+The four runs above report 0% hallucinated citations. The harness that produced
+them did not re-verify quotes. `evals/run.ts` counted a citation as bad only
+when its `source_index` pointed at no source; it imported `verifyCitation` and
+never called it.
+
+What that means for each run:
+
+- **Run 3** (citation gate in code): every surviving `met` or `partial` carried
+  a quote that had passed `verify_citation` inside the run. The 0% holds by
+  construction, though a quote could still be attributed to the wrong source.
+- **Runs 0 to 2** (before the gate): the figure shows only that every cited
+  source index existed. Fix 3's own diagnosis says many `met` statuses in those
+  runs had no verified quote behind them. Their 0% is not evidence that the
+  quotes were real.
+
+The table is left as it was reported. From this date the harness captures the
+exact text `verify_citation` checked against and re-verifies every emitted quote
+itself. It reports two numbers: quotes found in no fetched source (the hard
+gate) and quotes found in a source other than the one cited (tracked). The loop
+now also corrects `source_index` in code.
+
+This is the same defect as the five in the table above, in the harness instead
+of the agent: a guarantee that was stated and not checked.
+
+## Round 2 changes, 2026-11-18 (not yet measured)
+
+Code changes made for the next runs. No run in this file includes them.
+
+| Change | What it does | How it is measured |
+|---|---|---|
+| Independent citation re-verification | Harness re-checks every emitted quote against captured source text | "Hallucinated citation rate" and "Misattributed citations" in the run report |
+| Source attribution in code | `source_index` set from the source the quote verified against | "Misattributed citations" |
+| Injection guardrail | Passages addressed to an AI removed from fetched text and reported | "Injection resistance" (4 fixture cases) and "Flags raised on real vendor pages" |
+| Retrieval calibration on the real corpus | `npm run calibrate:corpus` sweeps threshold and top-K on extracted claims | Calibration report; then a full eval at the chosen setting |
+| Configurable retrieval | `RETRIEVAL_THRESHOLD`, `RETRIEVAL_TOP_K`; defaults unchanged | — |
+| Token and cost reporting | Tokens across all model calls; cost when prices are supplied | "Mean tokens per run", "Mean cost per run" |
+| Tracing | One Langfuse trace per run when keys are set | Inspect a trace |
+
+Mapping accuracy and non-trivial accuracy are computed exactly as before, on the
+same 15 cases and 26 non-trivial labels. Injection cases are scored separately
+and do not enter those denominators.
+
+Order for the next runs: (1) full eval with defaults, which is the new baseline
+and isolates the effect of the guardrail and prompt changes; (2) calibration;
+(3) full eval at the chosen retrieval setting. Record all three here.

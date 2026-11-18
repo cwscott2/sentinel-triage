@@ -12,6 +12,7 @@ evals/runs/
 *.tsbuildinfo
 next-env.d.ts
 evals/worksheets/
+evals/calibration/
 raw.ts
 t.ts
 
