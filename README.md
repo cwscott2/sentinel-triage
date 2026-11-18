@@ -21,20 +21,23 @@ Injection fixture cases are scored separately.
 | 3 Citation gate in code | 71.2% | 7.7% (2/26) | 0% | 3/4 | n/a |
 | 4 Round 2 (2026-11-18) | 81.1% | **30.8% (8/26)** | 0/22 ² | 4/4 | 4/4 |
 | 5 Step-cap fix, first version *(replaced)* | 78.8% | 30.8% (8/26) | 0/44 ² | 2/4 | 3/4 |
+| 6 Step budget stated; step-cap fix, second version | **85.6%** | **46.2% (12/26)** | 0/34 ² | 3/4 ³ | 6/6 |
 
 ¹ The harness at the time confirmed that each cited source existed and did not
-re-verify the quote. ² Every emitted quote re-verified by the harness.
+re-verify the quote. ² Every emitted quote re-verified by the harness. ³ The miss is
+a case whose target page changed since it was labeled; see the eval history.
 
 **Read non-trivial accuracy, not headline.** The label set is 80% `no_evidence`, so an
 agent that emits `no_evidence` for everything scores **80.3%** while doing nothing.
 Non-trivial accuracy scores only the 26 labels where the expected status is not
 `no_evidence`; a null agent scores 0% there.
 
-Where it stands: 8 of 26, against a target of 13. Run 4 is the best result so far and
-its cause is not isolated (the model changed between runs 3 and 4, along with the
-guardrail work). Run 5 was a fix that held the score and broke abstention; it was
-replaced, and the replacement has not been measured yet. What has held on every
-run is the hard gate: **no citation that fails verification.**
+Where it stands: 12 of 26 on the latest run, against a target of 13. It is one run and
+has not been repeated. Run 6 is the first clearly above the null agent (+5.3 points).
+The gain came from telling the model its step budget, which stopped runs from
+exhausting it one tool call at a time. Run 5 was a fix that held the score and broke
+abstention; it was replaced. What has held on every run is the hard gate: **no
+citation that fails verification.**
 
 Two earlier claims in this repo were wrong and are corrected in
 [docs/EVAL-HISTORY.md](docs/EVAL-HISTORY.md): the "0%" for runs 0 to 2 was not

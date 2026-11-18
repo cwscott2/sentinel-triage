@@ -325,8 +325,8 @@ Presets only — the demo runs on a live API key. 5 runs/hour.
 
       <footer style={{ marginTop: "3.5rem", paddingTop: "1rem", borderTop: `1px solid ${C.line}`,
                        fontSize: 12, color: C.dim, lineHeight: 1.6 }}>
-        15-case eval suite, four measured runs, one improvement and two documented
-        regressions:{" "}
+        15 labeled vendor cases and 6 injection fixtures, seven measured runs, every
+        regression documented:{" "}
         <a href="https://github.com/cwscott2/sentinel-triage/blob/main/docs/EVAL-HISTORY.md"
            style={{ color: C.ink }}>EVAL-HISTORY.md</a>
         {" · "}

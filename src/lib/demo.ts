@@ -43,14 +43,14 @@ export const DEMO_VENDORS: DemoVendor[] = [
     vendor: "Zoom",
     urls: ["https://www.zoom.com/en/products/ai-assistant/resources/privacy-security/"],
     label: "Zoom — AI Companion privacy & security",
-    expect: "Happy path.",
+    expect: "Little extractable text. Expect abstention: the correct answer for this page as fetched.",
   },
   {
     id: "copilot",
     vendor: "GitHub Copilot",
     urls: ["https://github.com/features/copilot"],
     label: "GitHub Copilot — product page",
-    expect: "Marketing copy, little governance substance. Expect many NO_MATCH_ABOVE_THRESHOLD.",
+    expect: "Marketing copy, little governance substance. Expect several NO_MATCH_ABOVE_THRESHOLD.",
   },
   {
     id: "vercel",
@@ -70,8 +70,8 @@ export const DEMO_VENDORS: DemoVendor[] = [
     id: "js-shell",
     vendor: "Anthropic",
     urls: ["https://www.anthropic.com/legal/aup"],
-    label: "ADVERSARIAL — HTTP 200, JavaScript shell",
-    expect: "Returns 200 with ~1 char of text. Must NOT read as 'vendor discloses nothing'.",
+    label: "Anthropic — usage policy (formerly a JavaScript shell)",
+    expect: "In Aug 2026 this URL returned a script-only shell and the agent had to abstain. It serves text now: expect a few partials with quotes.",
   },
   {
     id: "headings",

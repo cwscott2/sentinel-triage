@@ -2,6 +2,46 @@
 
 Written 2026-11-18 at session wrap-up. Read this cold; it does not assume the chat history.
 
+## Update, end of second session (2026-11-18)
+
+This section supersedes anything below that conflicts with it.
+
+**Branch `claude/fde-capstone-hardening`, pushed, not merged, no PR.** Commits added
+this session: step-cap fix (first version, then replaced), guardrail fixture presets
+and UI panel, two more injection cases, README sections and branding, eval history
+through run 6, and the Step 5 documents in `docs/capstone/`.
+
+**Latest measured state (run 6, code `d7988c7`, threshold 0.35):** non-trivial
+46.2% (12/26), headline 85.6%, 0/34 unverifiable, 0/34 misattributed, injection 6/6,
+abstention 3/4 (the miss is the stale case `a06`), no flags on real vendor pages.
+One run, not repeated. Full account in `docs/EVAL-HISTORY.md`.
+
+**Decisions this session**
+- `RETRIEVAL_THRESHOLD` stays unset (0.35). Calibration: ceiling 24/26 at 0.35.
+- README branding is Airworthy Advisory (Carl confirmed).
+- Submit Step 5 on measured numbers. The retrieval-in-code change is the named next
+  step, to be tried once, time-boxed, after submission.
+- The 50% target was missed by one label and the write-up says so.
+
+**Not verified**
+- Step-cap wrap-up call against the live model (no case hit the cap in run 6).
+- The "Input guardrail" panel rendered with a live result.
+- Fixture files present on a real Vercel deployment (`/fixtures/i02` should return 200).
+  The build trace manifest lists them for both routes.
+- Langfuse ingest. Cost per run.
+- Whether the course grades on the eval number, and whether late submissions count.
+
+**Open for Carl**
+- Merge to `main` (this is what changes the public demo) or use a preview deployment
+  for the recording.
+- Relabel or retarget eval case `a06-js-only-shell`: the page now serves text.
+- Decide whether to update the Step 1 scoping document's "0% on all four runs" wording.
+- Record the video with `docs/capstone/DEMO-SCRIPT.md`; add its link to
+  `docs/capstone/WRITE-UP.md`; submit Step 5. Resubmit Steps 3 and 4 if desired.
+- Rate limit: raise for recording, revert after (`docs/OPERATIONS.md`).
+
+---
+
 ## Where things stand
 
 Sentinel Triage is being reused as the capstone for the Build Fast with AI FDE

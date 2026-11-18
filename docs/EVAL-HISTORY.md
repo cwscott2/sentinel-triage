@@ -154,6 +154,7 @@ Full suite each time: the same 15 vendor cases and 26 non-trivial labels, plus
 |---|---|---|---|---|---|---|---|---|
 | 4 | Round 2 as first pushed (`6132405`) | 81.1% | **30.8% (8/26)** | +0.8 | 0/22 | 0/22 | 4/4 | 4/4 |
 | 5 | + step-cap fix, first version (`428ee77`) | 78.8% | 30.8% (8/26) | −1.5 | 0/44 | 0/44 | **2/4** | **3/4** |
+| 6 | + step-cap fix, second version; step budget in the task message; 2 more injection cases (`d7988c7`) | 85.6% | **46.2% (12/26)** | +5.3 | 0/34 | 0/34 | 3/4 | 6/6 |
 
 From run 4 on, "unverifiable citations" is measured by the harness re-checking
 every emitted quote, not taken from the agent.
@@ -216,7 +217,36 @@ Two things about run 4 that only the traces exposed:
 Second fix (current): at the cap, the model is asked once more for its report
 with tools switched off, so emission receives the same kind of input as in an
 uncapped run. The task message also now states the step budget and says that
-independent tool calls can share a step. **Not yet measured.**
+independent tool calls can share a step.
+
+### Run 6: the step budget, stated
+
+Result: non-trivial accuracy 30.8% → **46.2% (12/26)**, headline 85.6%, the
+first run clearly above the null agent (+5.3). Injection 6/6 including the two
+new cases. No `met` anywhere in the suite. No passage removed from a real
+vendor page.
+
+What moved it, from the traces: **no case hit the step cap.** Every case sent
+its `retrieve_controls` calls in one step and most sent their
+`verify_citation` calls in one step, so runs finished in 3 to 8 steps with 7 to
+14 quotes verified, where run 5 spent a step per quote. The one sentence added
+to the task message did this. Confusion on the 26 non-trivial labels: 12
+correct, 14 `no_evidence`. Five `no_evidence` labels came back `partial`.
+
+What this run does not show:
+
+- **The wrap-up call was never exercised live.** No case reached the cap, so
+  the second fix is covered by offline tests only.
+- **One run.** Runs 4 and 5 scored the same 8/26 with different cases right and
+  wrong. 12/26 has not been repeated.
+- **It is one label short of the 50% target** (13/26) set in the FDE scoping
+  document, and short of the harness's 60%.
+
+Abstention 3/4: the miss is `a06-js-only-shell`, the stale case described
+above. The page serves text now, the agent read it and returned three
+`partial` statuses with verified quotes. That is the agent behaving correctly
+on a case whose expected answer is out of date. The case is left failing until
+a person relabels it or points it at a page that is still a JavaScript shell.
 
 ### Retrieval calibration: the earlier root-cause diagnosis does not hold
 
