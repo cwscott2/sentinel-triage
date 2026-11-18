@@ -89,7 +89,7 @@ npm install
 npm test
 ```
 
-Expected: 83 tests, 82 pass, 1 skipped. These cover the guardrail rules, a list of
+Expected: 84 tests, 83 pass, 1 skipped. These cover the guardrail rules, a list of
 ordinary vendor sentences that must not be flagged, the fetch guard, and the whole
 agent loop against injected pages using scripted models.
 

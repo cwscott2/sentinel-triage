@@ -473,6 +473,24 @@ Any control without a verified quote is no_evidence. If nothing was verified, se
       console.warn(`[triage] downgraded ${downgraded} unverified claim(s) to no_evidence`);
     }
 
+    // A quote is shown to the reader as verified, so a row may carry one only
+    // when it is. The gate above covers met and partial. The model can also
+    // attach a quote to a not_met or no_evidence row, where nothing checked it
+    // (seen on the live demo, 2026-11-18: a no_evidence row with a quote beside
+    // it). A no_evidence row has no evidence by definition, so its citation is
+    // dropped; any other citation that did not verify is dropped too.
+    let stripped = 0;
+    for (const c of byId.values()) {
+      if (!c.citation) continue;
+      if (c.status === "no_evidence" || !verifiedQuotes.has(norm(c.citation.quote))) {
+        c.citation = null;
+        stripped++;
+      }
+    }
+    if (stripped > 0) {
+      console.warn(`[triage] removed ${stripped} citation(s) from rows that cannot carry one`);
+    }
+
     // Which source a quote came from is a fact of the run, not a model claim.
     // The gate above proves the quote verified against SOME parsed source; the
     // model's source_index can still point at a different one. Overwrite it

@@ -73,9 +73,13 @@ git push
 npx vercel --prod
 ```
 
-The GitHub connection failed at project creation, so pushes do **not** auto-deploy.
-`npx vercel --prod` deploys the **current working directory** — not the pushed
-commit. Deploy from the repo root, after saving.
+Observed 2026-11-18: Vercel builds a deployment for each push to GitHub, so the
+earlier note that pushes do not auto-deploy no longer holds. A push to a branch
+produces a preview; the preview environment has no `OPENAI_API_KEY`, so a run there
+fails with `AI_LoadAPIKeyError`. Use the footer check below to confirm what is live.
+
+`npx vercel --prod` remains the manual fallback. It deploys the **current working
+directory**, not the pushed commit. Deploy from the repo root, after saving.
 
 ### Confirming what is actually live
 

@@ -9,6 +9,7 @@ an instruction.
 | Rule | Mechanism | Where |
 |---|---|---|
 | A `met` or `partial` status needs a verbatim quote | Any such status whose quote did not pass `verify_citation` during the run is downgraded to `no_evidence` | `src/agent/loop.ts` |
+| A row shows a quote only when it verified | Citations are removed from every `no_evidence` row and from any row whose quote did not pass `verify_citation` | `src/agent/loop.ts` |
 | A quote is attributed to the source it came from | `source_index` is overwritten with the source the quote verified against | `src/agent/loop.ts` |
 | Control IDs are real | IDs absent from the loaded control set are dropped | `src/agent/loop.ts` |
 | Sources are real | The source list is built from successful fetches, never from model output | `src/agent/loop.ts` |

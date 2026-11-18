@@ -155,3 +155,37 @@ test("a run that ends with a summary is not marked as capped", async () => {
   assert.equal(r.stepCapReached, false);
   assert.ok(JSON.stringify(judgment.calls.at(-1)!.prompt).includes("Verified one quote."));
 });
+
+test("a no_evidence or not_met row cannot carry a quote that was not verified", async () => {
+  const UNCHECKED = "Northwind shares customer content with advertisers by default.";
+  const judgment = new ScriptedModel([
+    call("1", "parse_document", { url: URL_ }),
+    call("2", "verify_citation", { quote: Q1, url: URL_ }),
+    say("Verified one quote."),
+    emitted([
+      { control_id: "MEASURE 2.10", status: "partial", citation: { source_index: 0, quote: Q1 }, rationale: "Stated." },
+      // Verified quote on a no_evidence row: the row has no evidence, so no quote.
+      { control_id: "MANAGE 3.2", status: "no_evidence", citation: { source_index: 0, quote: Q1 }, rationale: "Not enough." },
+      // Unverified quote on a not_met row: nothing checked it.
+      { control_id: "GOVERN 6.1", status: "not_met", citation: { source_index: 0, quote: UNCHECKED }, rationale: "Contradicts." },
+    ]),
+  ]);
+  const extraction = new ScriptedModel([say(Q1)]);
+  const r = await runTriage(
+    { vendor: "Northwind Example Co", urls: [URL_], framework: "NIST_AI_RMF" },
+    undefined,
+    {
+      fetchGuard: { resolve, fetchImpl },
+      models: { judgment, extraction } as unknown as { judgment: LanguageModel; extraction: LanguageModel },
+    }
+  );
+  const byId = new Map(r.entry.controls.map((c) => [c.control_id, c]));
+  assert.equal(byId.get("MEASURE 2.10")?.citation?.quote, Q1);
+  assert.equal(byId.get("MANAGE 3.2")?.status, "no_evidence");
+  assert.equal(byId.get("MANAGE 3.2")?.citation, null);
+  assert.equal(byId.get("GOVERN 6.1")?.status, "not_met");
+  assert.equal(byId.get("GOVERN 6.1")?.citation, null);
+  for (const c of r.entry.controls) {
+    if (c.status === "no_evidence") assert.equal(c.citation, null, `${c.control_id} is no_evidence with a quote`);
+  }
+});
