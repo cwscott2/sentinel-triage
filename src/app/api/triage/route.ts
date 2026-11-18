@@ -3,6 +3,7 @@ import { z } from "zod";
 import { runTriage } from "@/agent/loop";
 import { Framework } from "@/lib/schema";
 import { ALLOWED_URLS, checkLimits } from "@/lib/demo";
+import { flushTracing } from "@/lib/tracing";
 
 export const maxDuration = 120;
 
@@ -54,6 +55,9 @@ export async function POST(req: NextRequest) {
       } catch (e) {
         send({ type: "error", error: "Triage failed", detail: String(e) });
       } finally {
+        // Serverless: send the trace before the function is frozen. A no-op
+        // when Langfuse keys are not set.
+        await flushTracing();
         controller.close();
       }
     },

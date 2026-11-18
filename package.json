@@ -12,10 +12,16 @@
     "embed:controls": "tsx --env-file=.env.local scripts/embed-controls.ts",
     "prep:labels": "tsx --env-file=.env.local evals/prep-labels.ts",
     "label": "tsx --env-file=.env.local evals/label.ts",
-    "diagnose": "tsx --env-file=.env.local evals/diagnose.ts"
+    "diagnose": "tsx --env-file=.env.local evals/diagnose.ts",
+    "calibrate": "tsx --env-file=.env.local evals/calibrate.ts",
+    "calibrate:corpus": "tsx --env-file=.env.local evals/calibrate-corpus.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "2.0.116",
+    "@langfuse/otel": "6.1.1",
+    "@langfuse/tracing": "6.1.1",
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/sdk-trace-node": "2.12.1",
     "ai": "5.0.222",
     "cheerio": "^1.0.0",
     "next": "^15.5.29",

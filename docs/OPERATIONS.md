@@ -121,3 +121,48 @@ per-case timeout.
 
 A full eval run is 15 cases, roughly 6-7 minutes, and costs real API spend. The
 entries JSON exists so diagnosis does not require re-running.
+
+
+---
+
+## Tracing (Langfuse)
+
+Off unless both `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are set. With
+them set, each triage run is one trace.
+
+### Turn it on locally
+
+Add to `.env.local` (values from the Langfuse project's API keys page):
+
+```
+LANGFUSE_PUBLIC_KEY=...
+LANGFUSE_SECRET_KEY=...
+LANGFUSE_BASE_URL=...
+```
+
+`npm run eval` then produces one trace per case.
+
+### Turn it on in production
+
+```powershell
+npx vercel env add LANGFUSE_PUBLIC_KEY production
+npx vercel env add LANGFUSE_SECRET_KEY production
+npx vercel env add LANGFUSE_BASE_URL production
+npx vercel --prod
+```
+
+Mark the secret key sensitive. The other two are not secrets.
+
+### What is sent
+
+Prompts and completions, which contain text from the public vendor pages being
+assessed, plus the run summary (status counts, guardrail firings, tool error
+codes, tokens, latency). No API key. The app holds no user data.
+
+### Turn it off
+
+Remove either key and redeploy. Nothing else changes.
+
+### Requirement
+
+`@langfuse/otel` needs Node 22 or later.
