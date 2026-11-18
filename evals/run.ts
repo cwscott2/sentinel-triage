@@ -77,6 +77,10 @@ function fixtureGuard(fixtures: Record<string, string>): { resolve: Resolver; fe
   let ntHits = 0, ntTotal = 0, nullHits = 0;
   const errorRows: string[] = [];
   const entries: Record<string, unknown> = {};
+  // The decision path of every case, written beside the entries so a bad case
+  // can be diagnosed from the run that produced it instead of by re-running.
+  const traces: Record<string, unknown> = {};
+  const capped: string[] = [];
   let caseNo = 0;
   let abstainHits = 0, abstainTotal = 0, latencySum = 0;
 
@@ -128,6 +132,14 @@ function fixtureGuard(fixtures: Record<string, string>): { resolve: Resolver; fe
     inTok += r.totalUsage.inputTokens;
     outTok += r.totalUsage.outputTokens;
     entries[c.id] = r.entry;
+    traces[c.id] = {
+      steps: r.steps,
+      stepCapReached: r.stepCapReached,
+      trace: r.trace,
+      toolErrors: r.toolErrors.map((e) => ({ code: e.code, message: e.message })),
+      injection: r.injection,
+    };
+    if (r.stepCapReached) capped.push(c.id);
 
     // Hallucinated citations (hard gate), checked on every case including the
     // injection ones. Each emitted quote is re-verified here, in the harness,
@@ -188,7 +200,7 @@ function fixtureGuard(fixtures: Record<string, string>): { resolve: Resolver; fe
     }
 
     const denom = expectControls.length || 1;
-    rows.push(`| ${c.id} | ${c.kind} | ${caseHits}/${expectControls.length} | ${(caseHits / denom * 100).toFixed(0)}% | ${r.entry.insufficient_evidence} | ${r.steps} | ${(r.latencyMs / 1000).toFixed(1)}s | ${r.toolErrors.map(e => e.code).join(", ") || "—"} |`);
+    rows.push(`| ${c.id} | ${c.kind} | ${caseHits}/${expectControls.length} | ${(caseHits / denom * 100).toFixed(0)}% | ${r.entry.insufficient_evidence} | ${r.steps}${r.stepCapReached ? " (cap)" : ""} | ${(r.latencyMs / 1000).toFixed(1)}s | ${r.toolErrors.map(e => e.code).join(", ") || "—"} |`);
   }
 
   const accuracy = statusTotal ? (statusHits / statusTotal) * 100 : 0;
@@ -242,7 +254,9 @@ expected status is something other than "no_evidence". A null agent scores 0% th
 |---|---|---|---|---|---|---|---|
 ${rows.join("\n")}
 
-## Citations
+${capped.length
+  ? `**Step cap reached on ${capped.length} case(s):** ${capped.join(", ")}. Gathering ended before the model summarised; the register was built from the evidence ledger kept in code. Claims not examined before the cap are missing from those rows.\n\n`
+  : ""}## Citations
 
 Every emitted quote was re-verified by this harness against the source text
 captured during the run. ${citations} citation(s) emitted: ${badCitations} found in no fetched
@@ -280,6 +294,7 @@ ${rows.length ? "Lowest non-trivial accuracy above. Diagnose the mechanism befor
   const out = join(RUNS, `${new Date().toISOString().replace(/[:.]/g, "-")}.md`);
   writeFileSync(out, report);
   writeFileSync(out.replace(/\.md$/, "-entries.json"), JSON.stringify(entries, null, 2));
+  writeFileSync(out.replace(/\.md$/, "-traces.json"), JSON.stringify(traces, null, 2));
   console.log(report);
   console.log(`\nWritten to ${out}`);
   await flushTracing();

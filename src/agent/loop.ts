@@ -64,6 +64,12 @@ export interface TriageResult {
    * instruct an AI rather than describe the vendor. Empty on an ordinary run.
    */
   injection: (InjectionFinding & { url: string })[];
+  /**
+   * True when evidence gathering ended at the step cap instead of with the
+   * model's own summary. Emission then worked from the evidence ledger the loop
+   * keeps in code. A run that hit the cap may have left claims unexamined.
+   */
+  stepCapReached: boolean;
 }
 
 /**
@@ -79,6 +85,8 @@ export interface TriageOptions {
   captureSources?: Map<string, string>;
   /** Replace the models, so the loop can be exercised offline with scripted ones. */
   models?: { judgment: LanguageModel; extraction: LanguageModel };
+  /** Override the step cap for one run. Defaults to MAX_STEPS. */
+  maxSteps?: number;
 }
 
 /**
@@ -157,6 +165,16 @@ async function runTriageInner(
   const verifiedQuotes = new Set<string>();
   /** normalized quote -> the source URL it verified against. */
   const quoteSource = new Map<string, string>();
+  /**
+   * The evidence ledger: what the tools actually returned, kept in code.
+   * `verifiedLedger` holds each quote as verified, with its source;
+   * `retrievalLedger` holds each claim and the controls that cleared the
+   * threshold for it. Emission falls back to these when gathering ends at the
+   * step cap with no summary (see Phase 2).
+   */
+  const verifiedLedger: { quote: string; url: string }[] = [];
+  const retrievalLedger: { claim: string; controls: { control_id: string; title: string; similarity: number }[] }[] = [];
+  const maxSteps = options.maxSteps ?? MAX_STEPS;
   const extra = { inputTokens: 0, outputTokens: 0 };
   const addUsage = (u?: { inputTokens?: number; outputTokens?: number }) => {
     extra.inputTokens += u?.inputTokens ?? 0;
@@ -274,8 +292,16 @@ async function runTriageInner(
       description:
         "Find framework controls matching a vendor claim. Returns empty if nothing clears the similarity threshold.",
       inputSchema: z.object({ claim: z.string() }),
-      execute: async ({ claim }) =>
-        record(await retrieveControls(input.framework, claim)),
+      execute: async ({ claim }) => {
+        const r = await retrieveControls(input.framework, claim);
+        if (r.ok) {
+          retrievalLedger.push({
+            claim,
+            controls: r.value.map((h) => ({ control_id: h.control_id, title: h.title, similarity: h.similarity })),
+          });
+        }
+        return record(r);
+      },
     }),
 
     verify_citation: tool({
@@ -294,6 +320,7 @@ async function runTriageInner(
         const v = verifyCitation(quote, source);
         if (v.ok) {
           const key = quote.toLowerCase().replace(/\s+/g, " ").trim();
+          if (!verifiedQuotes.has(key)) verifiedLedger.push({ quote, url });
           verifiedQuotes.add(key);
           quoteSource.set(key, url);
         }
@@ -307,7 +334,7 @@ async function runTriageInner(
     model: judgmentModel,
     providerOptions: OPENAI_PROVIDER_OPTIONS,
     system: SYSTEM_PROMPT,
-    stopWhen: stepCountIs(MAX_STEPS),
+    stopWhen: stepCountIs(maxSteps),
     experimental_telemetry: telemetry("gather", { vendor: input.vendor, framework: input.framework }),
     tools,
     onStepFinish: ({ toolCalls }) => {
@@ -331,6 +358,40 @@ ${input.urls.map((u) => `- ${u}`).join("\n")}
 Gather and verify the evidence. Report what you verified and what you could not.`,
   });
 
+  // When the step cap ends gathering, the last step is a tool call and
+  // `gather.text` is empty. Emission used to receive that empty string as its
+  // only evidence, so every control came back no_evidence however many quotes
+  // had verified: on the 2026-11-18 run two dense vendor pages hit the cap and
+  // lost all 7 of their non-trivial labels this way. The evidence is a fact of
+  // the run, so it is handed over from the ledger instead of from the model's
+  // account of it.
+  const stepCapReached = gather.text.trim() === "" && (gather.steps?.length ?? 0) >= maxSteps;
+  if (stepCapReached) {
+    trace.push({
+      step: stepCount,
+      tools: [],
+      note: `step cap (${maxSteps}) reached before a summary — emission used the evidence ledger (${verifiedLedger.length} verified quote(s))`,
+    });
+  }
+  const evidence = stepCapReached
+    ? `Evidence gathering stopped at the step limit before the analyst wrote a summary.
+Assess from this ledger of tool results only. Claims not examined before the limit are unknown, not absent.
+
+VERIFIED QUOTES (each confirmed verbatim in the source shown; cite them exactly as written):
+${verifiedLedger.length
+  ? verifiedLedger.map((q) => `  - "${q.quote}" — ${q.url}`).join("\n")
+  : "  (none)"}
+
+CONTROLS RETRIEVED FOR EACH CLAIM (similarity above threshold):
+${retrievalLedger.length
+  ? retrievalLedger
+      .map((r) => `  - claim: "${r.claim.slice(0, 300)}"\n${r.controls.map((c) => `      ${c.control_id} — ${c.title} (${c.similarity.toFixed(2)})`).join("\n")}`)
+      .join("\n")
+  : "  (none)"}
+
+A verified quote supports a control only when it addresses that control's subject. A quote that verified but matches no retrieved control stays unmapped.`
+    : gather.text;
+
   // Phase 2 — constrained emission. Schema enforces the met/partial citation rule,
   // so an unciteable assessment cannot survive validation.
   let entry: RegisterEntry;
@@ -342,7 +403,7 @@ Gather and verify the evidence. Report what you verified and what you could not.
       experimental_telemetry: telemetry("emit", { vendor: input.vendor, framework: input.framework }),
       prompt: `Produce the risk-register entry from this verified evidence.
 
-${gather.text}
+${evidence}
 
 VERIFIED SOURCES (cite by index into this list; nothing else may be cited):
 ${verifiedSources.length
@@ -464,6 +525,7 @@ Any control without a verified quote is no_evidence. If nothing was verified, se
     latencyMs: Date.now() - started,
     trace,
     injection,
+    stepCapReached,
     totalUsage: {
       inputTokens: (gather.totalUsage?.inputTokens ?? 0) + extra.inputTokens,
       outputTokens: (gather.totalUsage?.outputTokens ?? 0) + extra.outputTokens,
