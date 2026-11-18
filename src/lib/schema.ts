@@ -60,6 +60,7 @@ export type ToolErrorCode =
   | "UNSUPPORTED_LANGUAGE"
   | "NO_MATCH_ABOVE_THRESHOLD"
   | "CITATION_NOT_FOUND"
+  | "INJECTION_SUSPECTED"
   | "SCHEMA_INVALID";
 
 export interface ToolError {
