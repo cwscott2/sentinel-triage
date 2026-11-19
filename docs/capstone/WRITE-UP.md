@@ -10,7 +10,6 @@ across 34 and 6 of 6 prompt-injection cases passed.
 
 - Live demo: https://sentinel-triage-liart.vercel.app
 - Repository: https://github.com/cwscott2/sentinel-triage
-- Demo video: (add link)
 - Eval history, every run including the regressions: [docs/EVAL-HISTORY.md](https://github.com/cwscott2/sentinel-triage/blob/main/docs/EVAL-HISTORY.md)
 - Reviewer test cases: [docs/capstone/REVIEWER-TEST-CASES.md](https://github.com/cwscott2/sentinel-triage/blob/main/docs/capstone/REVIEWER-TEST-CASES.md)
 
