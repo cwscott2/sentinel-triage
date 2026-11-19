@@ -209,8 +209,9 @@ No legal advice or regulatory applicability rulings · no private or gated docum
 
 ## What the live demo accepts
 
-**The live demo accepts only its preset URLs.** It does not take a URL you type. A
-request for any other URL is refused by the API with HTTP 403 before a model is called.
+**The live demo accepts only its preset URLs** unless the visitor has an access code
+(see [Triaging your own URLs](#triaging-your-own-urls)). Without the code, a request for any
+other URL is refused by the API with HTTP 403 before a model is called.
 
 Why: the demo runs on a real API key at a public address. An endpoint that fetches and
 summarises any URL a stranger submits is an open tab on that key and a general-purpose
@@ -249,8 +250,29 @@ eval suite are also hosted in the app:
 | Two sources, one hostile | `i06-product`, `i06-faq` | The FAQ tells the reviewer to discard the other page |
 | Clean control | `i04` | Nothing. The page discusses prompt injection in ordinary vendor language |
 
-To triage a URL that is not a preset, clone the repo and run it with your own key
-(see Local development).
+## Triaging your own URLs
+
+Any public URL can be triaged by someone who has the access code. The feature is off
+unless `CUSTOM_URL_ACCESS_CODE` is set on the server.
+
+1. **Set the code** (12 characters or more) where the app runs:
+   - Locally: add `CUSTOM_URL_ACCESS_CODE=<code>` to `.env.local`, then `npm run dev`.
+   - On Vercel: `npx vercel env add CUSTOM_URL_ACCESS_CODE production`, choose
+     Secret, then `npx vercel --prod`.
+2. **Open the app with the code in the address:** `https://<host>/?access=<code>`.
+   A "Your vendor" form appears above the presets.
+3. **Enter the vendor name and up to 3 URLs**, one per line, and click Run triage.
+
+What stays the same: the per-IP limit and the daily cap count custom runs like preset
+runs, every fetch goes through the SSRF guard, and the injection guardrail and citation
+gate apply. A wrong code returns "Access code not accepted."
+
+What to expect from a page you choose: pages behind a login are not reachable, and pages
+built entirely in JavaScript return little text, so the agent abstains. That is the
+correct result for what was fetched, not an error.
+
+To turn it off, remove the variable (`npx vercel env rm CUSTOM_URL_ACCESS_CODE production`)
+and redeploy. To revoke one person's access, change the code.
 
 ## Why the new eval cases are injection fixtures only
 

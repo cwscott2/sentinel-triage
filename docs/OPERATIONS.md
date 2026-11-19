@@ -60,7 +60,12 @@ vendors in `src/lib/demo.ts` can be triaged; anything else returns 403. An
 unbounded public endpoint backed by a real key is an open tab on the owner's
 account. That lesson was paid for once on a prior project.
 
-To triage arbitrary URLs: clone the repo, supply your own key, run locally.
+Other URLs can be triaged by anyone who has the access code, when
+`CUSTOM_URL_ACCESS_CODE` is set: open the app at `/?access=<code>`. Setup, limits and
+how to turn it off are in the README section "Triaging your own URLs".
+
+Sharing the code shares spend on the OpenAI key. The per-IP limit and the daily cap
+(`DEMO_GLOBAL_PER_DAY`) still apply to every custom run and are what bound it.
 
 ---
 

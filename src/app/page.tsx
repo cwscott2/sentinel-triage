@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { parseUrlList } from "@/lib/urlList";
 import { DEMO_VENDORS, type DemoVendor } from "@/lib/demo";
 import { fixtureIdOf, fixtureViewPath } from "@/lib/fixtures";
 
@@ -27,14 +28,34 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [raw, setRaw] = useState(false);
   const [liveSteps, setLiveSteps] = useState<{ step: number; tools: string[]; done: boolean }[]>([]);
+  /** Set from ?access=<code> in the address. Reveals the custom-URL form; the server checks it. */
+  const [accessCode, setAccessCode] = useState<string | null>(null);
+  const [custom, setCustom] = useState(false);
+  const [customVendor, setCustomVendor] = useState("");
+  const [customUrls, setCustomUrls] = useState("");
+
+  useEffect(() => {
+    // Read after mount: the address is not known during the server render.
+    const code = new URLSearchParams(window.location.search).get("access");
+    if (code) setAccessCode(code);
+  }, []);
 
   async function run() {
+    let body: Record<string, unknown>;
+    if (custom) {
+      const list = parseUrlList(customUrls);
+      if (!list.ok) { setResult({ error: list.error }); return; }
+      if (!customVendor.trim()) { setResult({ error: "Enter the vendor name." }); return; }
+      body = { vendor: customVendor.trim().slice(0, 80), urls: list.urls, framework: "NIST_AI_RMF", accessCode };
+    } else {
+      body = { vendor: sel.vendor, urls: sel.urls, framework: "NIST_AI_RMF" };
+    }
     setLoading(true); setResult(null); setLiveSteps([]);
     try {
       const res = await fetch("/api/triage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vendor: sel.vendor, urls: sel.urls, framework: "NIST_AI_RMF" }),
+        body: JSON.stringify(body),
       });
 
       // Non-streaming responses are the guard rejections (429 / 403 / 400).
@@ -71,12 +92,12 @@ export default function Home() {
   }
 
   const presetButton = (v: DemoVendor) => (
-    <button key={v.id} onClick={() => { setSel(v); setResult(null); setLiveSteps([]); }}
+    <button key={v.id} onClick={() => { setSel(v); setCustom(false); setResult(null); setLiveSteps([]); }}
       style={{
         textAlign: "left", padding: "0.6rem 0.8rem", borderRadius: 6, fontSize: 13,
-        cursor: "pointer", background: sel.id === v.id ? C.ink : "white",
-        color: sel.id === v.id ? "white" : C.ink,
-        border: `1px solid ${sel.id === v.id ? C.ink : C.line}`,
+        cursor: "pointer", background: !custom && sel.id === v.id ? C.ink : "white",
+        color: !custom && sel.id === v.id ? "white" : C.ink,
+        border: `1px solid ${!custom && sel.id === v.id ? C.ink : C.line}`,
       }}>
       <div style={{ fontWeight: 500 }}>{v.label}</div>
       <div style={{ fontSize: 11, opacity: 0.75, marginTop: 2 }}>{v.expect}</div>
@@ -97,6 +118,34 @@ export default function Home() {
         verbatim against the fetched source — or the status is downgraded. Abstention is a
         successful outcome.
       </p>
+
+      {accessCode && (
+        <div style={{ margin: "1.5rem 0 0", padding: "0.9rem 1rem", borderRadius: 6,
+                      border: `1px solid ${custom ? C.ink : C.line}`, background: "white" }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: C.dim, marginBottom: 4,
+                        textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Your vendor
+          </div>
+          <p style={{ fontSize: 12, color: C.dim, margin: "0 0 8px", lineHeight: 1.5 }}>
+            Triage any vendor&apos;s public AI documentation: a trust page, AI policy, model
+            card or terms. Up to 3 URLs, one per line. Pages behind a login, or built
+            entirely in JavaScript, return little or nothing.
+          </p>
+          <input value={customVendor} placeholder="Vendor name"
+            onChange={(e) => { setCustomVendor(e.target.value); setCustom(true); }}
+            onFocus={() => setCustom(true)}
+            style={{ width: "100%", boxSizing: "border-box", padding: "0.5rem", fontSize: 13,
+                     border: `1px solid ${C.line}`, borderRadius: 4, marginBottom: 6 }} />
+          <textarea value={customUrls} rows={3} placeholder={"https://vendor.example/trust\nhttps://vendor.example/ai-policy"}
+            onChange={(e) => { setCustomUrls(e.target.value); setCustom(true); }}
+            onFocus={() => setCustom(true)}
+            style={{ width: "100%", boxSizing: "border-box", padding: "0.5rem", fontSize: 13,
+                     fontFamily: "ui-monospace, monospace", border: `1px solid ${C.line}`, borderRadius: 4 }} />
+          <div style={{ fontSize: 11, color: C.dim, marginTop: 4 }}>
+            {custom ? "Selected: Run triage uses these URLs." : "Click into the form to use it instead of a preset."}
+          </div>
+        </div>
+      )}
 
       <div style={{ fontSize: 12, fontWeight: 600, color: C.dim, margin: "1.5rem 0 6px",
                     textTransform: "uppercase", letterSpacing: "0.04em" }}>
@@ -119,7 +168,7 @@ export default function Home() {
         {GUARDRAIL_PRESETS.map(presetButton)}
       </div>
 
-      {sel.fixtures && (
+      {!custom && sel.fixtures && (
         <p style={{ fontSize: 12, color: C.dim, margin: "-0.6rem 0 1.2rem" }}>
           Open the page{sel.fixtures.length > 1 ? "s" : ""} the agent will read:{" "}
           {sel.fixtures.map((id, i) => (
@@ -141,7 +190,9 @@ export default function Home() {
         {loading ? "Triaging… (20–60s)" : "Run triage"}
       </button>
       <span style={{ fontSize: 12, color: C.dim, marginLeft: 12 }}>
-Presets only — the demo runs on a live API key. 5 runs/hour.
+        {accessCode
+          ? "Runs on a live API key. 5 runs/hour."
+          : "Presets only — the demo runs on a live API key. 5 runs/hour."}
       </span>
 
       {(loading || liveSteps.length > 0) && !result?.entry && (

@@ -7,7 +7,8 @@ How to check Sentinel Triage yourself, with the expected result for each test.
 ## Before you start
 
 - **The demo accepts only its preset buttons.** It runs on a live API key, so a typed
-  URL is refused. To test any other page, use "Run it locally" at the end.
+  URL is refused. To test any other page, run a local copy with an access code set
+  (README section "Triaging your own URLs").
 - **Limit: 5 runs per hour from one IP address.** There are 14 presets. To do the
   minimum, run L1, L6, G1, G2 and G6.
 - **A run takes 10 to 60 seconds.** The agent's steps appear as they happen.
@@ -89,12 +90,11 @@ npm install
 npm test
 ```
 
-Expected: 84 tests, 83 pass, 1 skipped. These cover the guardrail rules, a list of
+Expected: 87 tests, 86 pass, 1 skipped. These cover the guardrail rules, a list of
 ordinary vendor sentences that must not be flagged, the fetch guard, and the whole
 agent loop against injected pages using scripted models.
 
-To run the full eval or triage your own URL, copy `.env.example` to `.env.local`, add
-an OpenAI key, then:
+To run the full eval, copy `.env.example` to `.env.local`, add an OpenAI key, then:
 
 ```bash
 npm run embed:controls
@@ -103,7 +103,8 @@ npm run dev
 ```
 
 `npm run eval` writes a report, the register for every case and a step trace for every
-case to `evals/runs/`.
+case to `evals/runs/`. To triage your own URLs in the local copy, also set
+`CUSTOM_URL_ACCESS_CODE` in `.env.local` and open `http://localhost:3000/?access=<code>`.
 
 ## Known gaps a reviewer may hit
 

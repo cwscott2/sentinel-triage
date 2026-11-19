@@ -6,6 +6,7 @@ import { ALLOWED_URLS, checkLimits } from "@/lib/demo";
 import { flushTracing } from "@/lib/tracing";
 import { fixtureIdOf } from "@/lib/fixtures";
 import { fixtureFetchGuard } from "@/lib/fixtureServer";
+import { checkCustomAccess } from "@/lib/access";
 
 export const maxDuration = 120;
 
@@ -13,6 +14,8 @@ const Body = z.object({
   vendor: z.string().min(1).max(80),
   urls: z.array(z.url()).min(1).max(3),
   framework: Framework.default("NIST_AI_RMF"),
+  /** Unlocks URLs outside the preset list. See src/lib/access.ts. */
+  accessCode: z.string().max(200).optional(),
 });
 
 const json = (o: unknown, status: number) =>
@@ -37,21 +40,29 @@ export async function POST(req: NextRequest) {
   const parsed = Body.safeParse(await req.json());
   if (!parsed.success) return json({ error: z.flattenError(parsed.error) }, 400);
 
-  const disallowed = parsed.data.urls.filter((u) => !ALLOWED_URLS.has(u));
+  const { accessCode, ...input } = parsed.data;
+  const disallowed = input.urls.filter((u) => !ALLOWED_URLS.has(u));
   if (disallowed.length > 0) {
-    return json({
-      error:
-        "This demo runs on a live API key, so it accepts only the preset vendors. " +
-        "Clone the repo and add your own key to triage arbitrary URLs.",
-      disallowed,
-    }, 403);
+    const access = checkCustomAccess(accessCode);
+    if (!access.ok) {
+      return json({
+        error:
+          access.reason === "wrong"
+            ? "Access code not accepted."
+            : "This demo runs on a live API key, so it accepts only the preset vendors. " +
+              "Other URLs need an access code; see the README section 'Triaging your own URLs'.",
+        disallowed,
+      }, 403);
+    }
+    // A custom run is always a live run. A URL on the fixture host is never
+    // served from a file here; it simply fails to resolve.
   }
 
   // Guardrail presets run against fixture pages bundled with the app. A request
   // must be all fixtures or none: one run is either sealed off from the network
   // or it is an ordinary run.
-  const fixtureCount = parsed.data.urls.filter((u) => fixtureIdOf(u) !== null).length;
-  if (fixtureCount > 0 && fixtureCount < parsed.data.urls.length) {
+  const fixtureCount = input.urls.filter((u) => fixtureIdOf(u) !== null).length;
+  if (fixtureCount > 0 && fixtureCount < input.urls.length) {
     return json({ error: "Fixture pages and live vendor URLs cannot be mixed in one run." }, 400);
   }
   const options = fixtureCount > 0 ? { fetchGuard: fixtureFetchGuard() } : {};
@@ -61,7 +72,7 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       const send = (o: unknown) => controller.enqueue(encoder.encode(JSON.stringify(o) + "\n"));
       try {
-        const result = await runTriage(parsed.data, (e) => send({ type: "step", ...e }), options);
+        const result = await runTriage(input, (e) => send({ type: "step", ...e }), options);
         send({ type: "result", ...result });
       } catch (e) {
         send({ type: "error", error: "Triage failed", detail: String(e) });
