@@ -33,11 +33,13 @@ export default function Home() {
   const [custom, setCustom] = useState(false);
   const [customVendor, setCustomVendor] = useState("");
   const [customUrls, setCustomUrls] = useState("");
+  /** In access mode the presets are tucked away until asked for. */
+  const [showPresets, setShowPresets] = useState(false);
 
   useEffect(() => {
     // Read after mount: the address is not known during the server render.
     const code = new URLSearchParams(window.location.search).get("access");
-    if (code) setAccessCode(code);
+    if (code) { setAccessCode(code); setCustom(true); }
   }, []);
 
   async function run() {
@@ -141,12 +143,23 @@ export default function Home() {
             onFocus={() => setCustom(true)}
             style={{ width: "100%", boxSizing: "border-box", padding: "0.5rem", fontSize: 13,
                      fontFamily: "ui-monospace, monospace", border: `1px solid ${C.line}`, borderRadius: 4 }} />
-          <div style={{ fontSize: 11, color: C.dim, marginTop: 4 }}>
-            {custom ? "Selected: Run triage uses these URLs." : "Click into the form to use it instead of a preset."}
-          </div>
+          {showPresets && (
+            <div style={{ fontSize: 11, color: C.dim, marginTop: 4 }}>
+              {custom ? "Selected: Run triage uses these URLs." : "Click into the form to use it instead of an example."}
+            </div>
+          )}
         </div>
       )}
 
+      {accessCode && (
+        <button onClick={() => { setShowPresets((v) => !v); setCustom(true); setResult(null); setLiveSteps([]); }}
+          style={{ background: "none", border: "none", padding: 0, margin: "0.9rem 0 0",
+                   fontSize: 12, color: C.dim, textDecoration: "underline", cursor: "pointer" }}>
+          {showPresets ? "Hide the examples" : "Or run one of the built-in examples"}
+        </button>
+      )}
+
+      {(!accessCode || showPresets) && (<>
       <div style={{ fontSize: 12, fontWeight: 600, color: C.dim, margin: "1.5rem 0 6px",
                     textTransform: "uppercase", letterSpacing: "0.04em" }}>
         Live vendor pages
@@ -167,6 +180,9 @@ export default function Home() {
       <div style={{ display: "grid", gap: 6, marginBottom: "1.5rem" }}>
         {GUARDRAIL_PRESETS.map(presetButton)}
       </div>
+      </>)}
+
+      {accessCode && !showPresets && <div style={{ height: "1.2rem" }} />}
 
       {!custom && sel.fixtures && (
         <p style={{ fontSize: 12, color: C.dim, margin: "-0.6rem 0 1.2rem" }}>
